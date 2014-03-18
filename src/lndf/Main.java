@@ -1,24 +1,18 @@
 package lndf;
 
-import javafx.animation.Interpolator;
-import javafx.animation.KeyFrame;
-import javafx.animation.KeyValue;
-import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
-import javafx.scene.layout.Pane;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.web.WebEngine;
-import javafx.scene.web.WebView;
 import javafx.stage.Stage;
-import javafx.util.Duration;
 
 /**
  * Created by alexgru-mobile on 18.03.14.
  */
 public class Main extends Application {
+    private static final int DIM_X = 800;
+    private static final int DIM_Y = 500;
 
     @Override
     public void init() {
@@ -26,6 +20,18 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) {
+        StackPane pane = new StackPane();
+
+        Image capturedImageSrc = new Image("file:media/IMG_0031.JPG");
+        ImageView capturedImage = new ImageView();
+        capturedImage.setImage(capturedImageSrc);
+        capturedImage.setPreserveRatio(true);
+        capturedImage.setFitHeight(200.0);
+        pane.getChildren().add(capturedImage);
+        Scene scene = new Scene(pane, DIM_X, DIM_Y);
+
+        stage.setScene(scene);
+        stage.show();
     }
 
 
