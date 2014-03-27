@@ -8,10 +8,12 @@ import javafx.geometry.Rectangle2D;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
+import javafx.scene.paint.Paint;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.RectangleBuilder;
 import javafx.stage.Screen;
@@ -30,6 +32,9 @@ public class Main extends Application {
     private static final String ROI_DIR_NAME = ORIGIN_DIR_NAME + "ROI/";
     private static final String FEATURE_DIR_NAME = ORIGIN_DIR_NAME + "Feature/";
     private static final double CUTOUT_LINEWIDTH = 5;
+    private static final Color SHAPE_COLOR = Color.YELLOW;
+    private static final Color SHAPE_COLOR_ERROR = Color.RED;
+
 
     private double capturedImageWidth;
     private double capturedImageHeight;
@@ -88,18 +93,17 @@ public class Main extends Application {
         private void checkBounds(double cutOutRegionWidth, double cutOutRegionHeight) {
             if (cutOutStartX + cutOutRegionWidth > capturedImageWidth ||
                     cutOutStartY + cutOutRegionHeight > capturedImageHeight) {
-                cutOutRegion.setStroke(Color.RED);
+                cutOutRegion.setStroke(SHAPE_COLOR_ERROR);
             } else {
-                cutOutRegion.setStroke(Color.YELLOW);
+                cutOutRegion.setStroke(SHAPE_COLOR);
             }
         }
     };
     private EventHandler<? super MouseEvent> mouseReleasedHandler = new EventHandler<MouseEvent>() {
         @Override
         public void handle(MouseEvent mouseEvent) {
-            if (!cutOutRegion.getStroke().equals(Color.RED)) {
+            if (!cutOutRegion.getStroke().equals(SHAPE_COLOR_ERROR)) {
                 try {
-                    cutOutRegion.setVisible(false);
                     double ratio = capturedImageSrc.getWidth() / capturedImage.getFitWidth();
 
                     int cutOutStartX_ABSOLUTE = (int) (cutOutStartX * ratio);
@@ -161,9 +165,10 @@ public class Main extends Application {
             featureDir.mkdir();
         }
         cutOutRegion = RectangleBuilder.create().build();
-        cutOutRegion.setStroke(Color.YELLOW);
+        cutOutRegion.setStroke(SHAPE_COLOR);
         cutOutRegion.setStrokeWidth(CUTOUT_LINEWIDTH);
         cutOutRegion.setFill(Color.TRANSPARENT);
+        cutOutRegion.setMouseTransparent(true);
     }
 
     @Override
@@ -182,6 +187,7 @@ public class Main extends Application {
         capturedImage = new ImageView();
         capturedImage.setImage(capturedImageSrc);
         capturedImage.setPreserveRatio(true);
+//        capturedImage.setEffect(new DropShadow(20, Color.BLACK));
         capturedImage.setX(displayBounds.getWidth() / 20);
         capturedImage.setY(capturedImage.getX());
         capturedImage.setOnMousePressed(mousePressedHandler);
@@ -209,19 +215,20 @@ public class Main extends Application {
         capturedImageHeight = capturedImage.getBoundsInLocal().getHeight();
         roiImage.setFitWidth(capturedImageWidth);
         roiImage.setFitHeight(roiImage.getFitWidth());
+        roiImage.setEffect(new DropShadow(20, SHAPE_COLOR));
     }
 
     private Image getMostRecentOrigin() {
         File mostRecentOrigin = null;
 
         for (final File f : originDir.listFiles(fileNameFilter)) {
-            System.out.println("RESULT");
             if (mostRecentOrigin == null || f.lastModified() > mostRecentOrigin.lastModified()) {
                 mostRecentOrigin = f;
             }
         }
         currOriginName = mostRecentOrigin.getName();
         currRoiName = currOriginName.replace(".", "_ROI.");
+        cutOutRegion.setVisible(false);
         return new Image("file:" + ORIGIN_DIR_NAME + currOriginName);
     }
 
