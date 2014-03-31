@@ -1,5 +1,6 @@
 package lndf;
 
+import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
@@ -42,7 +43,8 @@ public class LNDF extends Application {
     private static final String MATLAB_BIN_DIR = "C:\\Program Files\\MATLAB\\R2012a\\bin\\";
 
     private double capturedImageWidth;
-    private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
+//    private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
+    private static final String MATLAB_PROCESSING_DIR = "C:\\Users\\alexgru-mobile\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
     private double capturedImageHeight;
 
     private File originDir = new File(ORIGIN_DIR_NAME);
@@ -94,6 +96,18 @@ public class LNDF extends Application {
     private EventHandler<? super MouseEvent> reloadHandler;
     private EventHandler<MouseEvent> prepHandler;
 
+    private long lastTimerCall = System.nanoTime();
+    private static final long INTERVAL = 3_000_000_000l;
+    private AnimationTimer timer = new AnimationTimer() {
+        @Override
+        public void handle(long now) {
+            if (now > lastTimerCall + INTERVAL) {
+                System.out.println("Tick!");
+               capturedImage.setImage(getMostRecentOrigin());
+                lastTimerCall = now;
+            }
+        }
+    };
     public LNDF() {
         initializeHandlers();
     }
@@ -103,6 +117,7 @@ public class LNDF extends Application {
             @Override
             public void handle(MouseEvent mouseEvent) {
                 //            System.out.println("CLICK!");
+                timer.stop();
                 cutOutStartX = mouseEvent.getX() - capturedImage.getX();
                 cutOutStartY = mouseEvent.getY() - capturedImage.getY();
 
@@ -160,6 +175,7 @@ public class LNDF extends Application {
                     } catch (Exception e) {
                         System.out.println("An error occured. Details: " + e);
                     }
+                    timer.start();
                 }
             }
 
@@ -205,7 +221,7 @@ public class LNDF extends Application {
 
     private void loadPrepImage() {
 //        String fileString = "file:" + PREP_DIR_NAME + currRoiName + "_prep.jpg";
-        String fileString = PREP_DIR_NAME + "IMG_0025_ROI.JPG_prep.jpg";
+        String fileString = PREP_DIR_NAME + "IMG_0013_ROI.JPG_prep.jpg";
         File prepFile = new File(fileString);
         while (!prepFile.exists()) {
             System.out.println("wait..");
@@ -361,6 +377,8 @@ public class LNDF extends Application {
         prepBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - prepBtn.getWidth() - 10);
         prepBtn.setLayoutY(roiImage.getY() + 10);
         prepBtn.setVisible(false);
+
+        timer.start();
     }
 
     private Image getMostRecentOrigin() {
