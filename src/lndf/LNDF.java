@@ -38,8 +38,8 @@ public class LNDF extends Application {
     private static final double CUTOUT_LINEWIDTH = 5;
     private static final Color SHAPE_COLOR = Color.YELLOW;
     private static final Color SHAPE_COLOR_ERROR = Color.RED;
-    private static final double CAPTURED_IMAGE_X = 20;
-    private static final String MATLAB_BIN_DIR = "C:/Program Files/MATLAB/R2009b/bin/";
+    private static final double CAPTURED_IMAGE_OFFSET = 100;
+    private static final String MATLAB_BIN_DIR = "C:\\Program Files\\MATLAB\\R2012a\\bin\\";
 
     private double capturedImageWidth;
     private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
@@ -181,6 +181,10 @@ public class LNDF extends Application {
             @Override
             public void handle(MouseEvent mouseEvent) {
 //                System.out.println("RELOAD!");
+                cutOutRegion.setVisible(false);
+                roiImage.setVisible(false);
+                prepBtn.setVisible(false);
+                prepImage.setVisible(false);
                 capturedImageSrc = getMostRecentOrigin();
                 capturedImage.setImage(capturedImageSrc);
             }
@@ -207,12 +211,13 @@ public class LNDF extends Application {
             System.out.println("wait..");
             try {
                 Thread.sleep(1000);
-            } catch(InterruptedException ex) {
+            } catch (InterruptedException ex) {
                 Thread.currentThread().interrupt();
             }
         }
         prepImageSrc = new Image("file:" + fileString);
         prepImage.setImage(prepImageSrc);
+        prepImage.setVisible(true);
     }
 
     private void runMatlabPreprocessing() throws IOException, InterruptedException {
@@ -240,6 +245,8 @@ public class LNDF extends Application {
         File roiFile = new File(ROI_DIR_NAME + currRoiName);
         ImageIO.write(bImage, "jpg", roiFile);
         roiImage.setImage(new Image("file:" + ROI_DIR_NAME + currRoiName));
+        roiImage.setVisible(true);
+        prepBtn.setVisible(true);
     }
 
     @Override
@@ -288,6 +295,16 @@ public class LNDF extends Application {
     @Override
     public void start(Stage stage) {
         Rectangle2D displayBounds = Screen.getPrimary().getVisualBounds();
+
+        ImageView header = new ImageView(new Image("file:icons/header_low.png"));
+        header.setPreserveRatio(true);
+        header.setFitWidth(displayBounds.getWidth()/2);
+        header.setX(displayBounds.getWidth() - header.getLayoutBounds().getWidth() - 10);
+        ImageView lndf = new ImageView(new Image("file:icons/lndf.png"));
+        lndf.setPreserveRatio(true);
+        lndf.setFitWidth(300);
+        lndf.setX(0);
+
         Group root = new Group();
 
         capturedImageSrc = getMostRecentOrigin();
@@ -295,8 +312,8 @@ public class LNDF extends Application {
         capturedImage.setImage(capturedImageSrc);
         capturedImage.setPreserveRatio(true);
 //        capturedImage.setEffect(new DropShadow(20, Color.BLACK));
-        capturedImage.setX(CAPTURED_IMAGE_X);
-        capturedImage.setY(capturedImage.getX());
+        capturedImage.setX(CAPTURED_IMAGE_OFFSET);
+        capturedImage.setY(header.getY() + header.getLayoutBounds().getHeight() + capturedImage.getX());
         capturedImage.setOnMousePressed(mousePressedHandler);
         capturedImage.setOnMouseDragged(mouseDraggedHandler);
         capturedImage.setOnMouseReleased(mouseReleasedHandler);
@@ -304,7 +321,9 @@ public class LNDF extends Application {
         roiImage = new ImageView();
         prepImage = new ImageView();
 
+        root.getChildren().add(header);
         root.getChildren().add(capturedImage);
+        root.getChildren().add(lndf);
         root.getChildren().add(roiImage);
         root.getChildren().add(prepImage);
         root.getChildren().add(cutOutRegion);
@@ -330,7 +349,7 @@ public class LNDF extends Application {
         roiImage.setFitWidth(capturedImageWidth / 1.5);
         roiImage.setFitHeight(roiImage.getFitWidth());
         roiImage.setEffect(new DropShadow(20, SHAPE_COLOR));
-        roiImage.setX(capturedImage.getX());
+        roiImage.setX(capturedImage.getX() + capturedImageWidth/2 - roiImage.getLayoutBounds().getWidth()/2);
         roiImage.setY(capturedImage.getY() + capturedImageHeight + 40);
 
         prepImage.setFitWidth(capturedImageWidth / 1.5);
@@ -341,6 +360,7 @@ public class LNDF extends Application {
 
         prepBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - prepBtn.getWidth() - 10);
         prepBtn.setLayoutY(roiImage.getY() + 10);
+        prepBtn.setVisible(false);
     }
 
     private Image getMostRecentOrigin() {
