@@ -41,9 +41,10 @@ public class LNDF extends Application {
     private static final Color SHAPE_COLOR_ERROR = Color.RED;
     private static final double CAPTURED_IMAGE_OFFSET = 100;
     private static final String MATLAB_BIN_DIR = "C:\\Program Files\\MATLAB\\R2012a\\bin\\";
+    private static final boolean RELOAD_BUTTON_VISIBLE = false;
 
     private double capturedImageWidth;
-//    private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
+    //    private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
     private static final String MATLAB_PROCESSING_DIR = "C:\\Users\\alexgru-mobile\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
     private double capturedImageHeight;
 
@@ -103,11 +104,16 @@ public class LNDF extends Application {
         public void handle(long now) {
             if (now > lastTimerCall + INTERVAL) {
                 System.out.println("Tick!");
-               capturedImage.setImage(getMostRecentOrigin());
+                Image newOne = getMostRecentOrigin();
+                if (newOne != null) {
+                    capturedImageSrc = newOne;
+                    capturedImage.setImage(capturedImageSrc);
+                }
                 lastTimerCall = now;
             }
         }
     };
+
     public LNDF() {
         initializeHandlers();
     }
@@ -175,8 +181,8 @@ public class LNDF extends Application {
                     } catch (Exception e) {
                         System.out.println("An error occured. Details: " + e);
                     }
-                    timer.start();
                 }
+                timer.start();
             }
 
 
@@ -201,8 +207,11 @@ public class LNDF extends Application {
                 roiImage.setVisible(false);
                 prepBtn.setVisible(false);
                 prepImage.setVisible(false);
-                capturedImageSrc = getMostRecentOrigin();
-                capturedImage.setImage(capturedImageSrc);
+                Image newOne = getMostRecentOrigin();
+                if (newOne != null) {
+                    capturedImageSrc = newOne;
+                    capturedImage.setImage(capturedImageSrc);
+                }
             }
         };
         prepHandler = new EventHandler<MouseEvent>() {
@@ -210,8 +219,12 @@ public class LNDF extends Application {
             public void handle(MouseEvent mouseEvent) {
 //                System.out.println("PREP!");
                 try {
-                    runMatlabPreprocessing();
-                    loadPrepImage();
+                    // should do matlab on its own
+                    // runMatlabPreprocessing();
+                    boolean success = loadPrepImageFromCurrentROI();
+                    if (!success) {
+                        System.out.println("Problems while loading currentPrepImage.");
+                    }
                 } catch (Exception e) {
                     System.out.println("An error occured. Details: " + e);
                 }
@@ -219,25 +232,31 @@ public class LNDF extends Application {
         };
     }
 
-    private void loadPrepImage() {
-//        String fileString = "file:" + PREP_DIR_NAME + currRoiName + "_prep.jpg";
-        String fileString = PREP_DIR_NAME + "IMG_0013_ROI.JPG_prep.jpg";
+    private boolean loadPrepImageFromCurrentROI() {
+        String fileString = PREP_DIR_NAME + currRoiName + "_prep.jpg";
+        System.out.println(fileString);
         File prepFile = new File(fileString);
-        while (!prepFile.exists()) {
-            System.out.println("wait..");
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-            }
+//        while (!prepFile.exists()) {
+//            System.out.println("wait..");
+//            try {
+//                Thread.sleep(1000);
+//            } catch (InterruptedException ex) {
+//                Thread.currentThread().interrupt();
+//            }
+//        }
+        if (!prepFile.exists()) {
+            return false;
+        } else {
+            prepImageSrc = new Image("file:" + fileString);
+            prepImage.setImage(prepImageSrc);
+            prepImage.setVisible(true);
+            return true;
         }
-        prepImageSrc = new Image("file:" + fileString);
-        prepImage.setImage(prepImageSrc);
-        prepImage.setVisible(true);
     }
 
     private void runMatlabPreprocessing() throws IOException, InterruptedException {
-        moveCurrentPrepsToHistory();
+        // matlabs job now
+        // moveCurrentPrepsToHistory();
         Runtime runtime = Runtime.getRuntime();
         String cmd = MATLAB_BIN_DIR + "matlab.exe -nodisplay -nosplash -nodesktop -hidden -r run('" + MATLAB_PROCESSING_DIR + "f_HandVene_Single.m');exit;";
         System.out.println(cmd);
@@ -279,6 +298,7 @@ public class LNDF extends Application {
         reloadIcon.setFitHeight(reloadIcon.getFitWidth());
         reloadBtn = new Button("", reloadIcon);
         reloadBtn.setOnMousePressed(reloadHandler);
+        reloadBtn.setVisible(RELOAD_BUTTON_VISIBLE);
 
         ImageView prepIcon = new ImageView(new Image("file:icons/prep-icon.png"));
         prepIcon.setFitWidth(20);
@@ -314,7 +334,7 @@ public class LNDF extends Application {
 
         ImageView header = new ImageView(new Image("file:icons/header_low.png"));
         header.setPreserveRatio(true);
-        header.setFitWidth(displayBounds.getWidth()/2);
+        header.setFitWidth(displayBounds.getWidth() / 2);
         header.setX(displayBounds.getWidth() - header.getLayoutBounds().getWidth() - 10);
         ImageView lndf = new ImageView(new Image("file:icons/lndf.png"));
         lndf.setPreserveRatio(true);
@@ -365,7 +385,7 @@ public class LNDF extends Application {
         roiImage.setFitWidth(capturedImageWidth / 1.5);
         roiImage.setFitHeight(roiImage.getFitWidth());
         roiImage.setEffect(new DropShadow(20, SHAPE_COLOR));
-        roiImage.setX(capturedImage.getX() + capturedImageWidth/2 - roiImage.getLayoutBounds().getWidth()/2);
+        roiImage.setX(capturedImage.getX() + capturedImageWidth / 2 - roiImage.getLayoutBounds().getWidth() / 2);
         roiImage.setY(capturedImage.getY() + capturedImageHeight + 40);
 
         prepImage.setFitWidth(capturedImageWidth / 1.5);
@@ -389,12 +409,17 @@ public class LNDF extends Application {
                 mostRecentOrigin = f;
             }
         }
-        currOriginName = mostRecentOrigin.getName();
-        currRoiName = currOriginName.replace(".", "_ROI.");
-        cutOutRegion.setVisible(false);
-        return new Image("file:" + ORIGIN_DIR_NAME + currOriginName);
-    }
 
+        System.out.println("mostRecentOrigin " + mostRecentOrigin.getName() + " vs " + currOriginName);
+        if (mostRecentOrigin != null && !mostRecentOrigin.getName().equals(currOriginName)) {
+            currOriginName = mostRecentOrigin.getName();
+            currRoiName = currOriginName.replace(".", "_ROI.");
+            cutOutRegion.setVisible(false);
+            return new Image("file:" + ORIGIN_DIR_NAME + currOriginName);
+        } else {
+            return null;
+        }
+    }
 
     @Override
     public void stop() {
