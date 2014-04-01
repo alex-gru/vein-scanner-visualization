@@ -59,7 +59,6 @@ public class LNDF extends Application {
     private String currRoiName;
     private String currPrepName;
     private String currSiftName;
-    private String currSurfName;
 
     private Image capturedImageSrc;
     private ImageView capturedImage;
@@ -78,6 +77,7 @@ public class LNDF extends Application {
 
     private Button reloadBtn;
     private Button prepBtn;
+    private Button siftBtn;
 
     private double cutOutStartX;
     private double cutOutStartY;
@@ -96,6 +96,7 @@ public class LNDF extends Application {
     };
     private EventHandler<? super MouseEvent> reloadHandler;
     private EventHandler<MouseEvent> prepHandler;
+    private EventHandler<MouseEvent> siftHandler;
 
     private long lastTimerCall = System.nanoTime();
     private static final long INTERVAL = 3_000_000_000l;
@@ -230,26 +231,49 @@ public class LNDF extends Application {
                 }
             }
         };
+
+        siftHandler = new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent mouseEvent) {
+//                System.out.println("PREP!");
+                try {
+                    // should do matlab on its own
+                    // runMatlabPreprocessing();
+                    boolean success = loadSiftImageFromCurrentROI();
+                    if (!success) {
+                        System.out.println("Problems while loading currentSiftImage.");
+                    }
+                } catch (Exception e) {
+                    System.out.println("An error occured. Details: " + e);
+                }
+            }
+        };
     }
 
     private boolean loadPrepImageFromCurrentROI() {
         String fileString = PREP_DIR_NAME + currRoiName + "_prep.jpg";
         System.out.println(fileString);
         File prepFile = new File(fileString);
-//        while (!prepFile.exists()) {
-//            System.out.println("wait..");
-//            try {
-//                Thread.sleep(1000);
-//            } catch (InterruptedException ex) {
-//                Thread.currentThread().interrupt();
-//            }
-//        }
         if (!prepFile.exists()) {
             return false;
         } else {
             prepImageSrc = new Image("file:" + fileString);
             prepImage.setImage(prepImageSrc);
             prepImage.setVisible(true);
+            return true;
+        }
+    }
+
+    private boolean loadSiftImageFromCurrentROI() {
+        String fileString = SIFT_DIR_NAME + currRoiName + "_xtr_sift.jpg";
+        System.out.println("SIFT: " + fileString);
+        File siftFile = new File(fileString);
+        if (!siftFile.exists()) {
+            return false;
+        } else {
+            siftImageSrc = new Image("file:" + fileString);
+            siftImage.setImage(siftImageSrc);
+            siftImage.setVisible(true);
             return true;
         }
     }
@@ -305,7 +329,8 @@ public class LNDF extends Application {
         prepIcon.setFitHeight(reloadIcon.getFitWidth());
         prepBtn = new Button("", prepIcon);
         prepBtn.setOnMousePressed(prepHandler);
-    }
+        siftBtn = new Button("", reloadIcon);
+        siftBtn.setOnMousePressed(siftHandler);}
 
     private void checkDirs() {
         if (!originDir.exists() || !originDir.isDirectory()) {
@@ -356,15 +381,18 @@ public class LNDF extends Application {
 
         roiImage = new ImageView();
         prepImage = new ImageView();
+        siftImage = new ImageView();
 
         root.getChildren().add(header);
         root.getChildren().add(capturedImage);
         root.getChildren().add(lndf);
         root.getChildren().add(roiImage);
         root.getChildren().add(prepImage);
+        root.getChildren().add(siftImage);
         root.getChildren().add(cutOutRegion);
         root.getChildren().add(reloadBtn);
         root.getChildren().add(prepBtn);
+        root.getChildren().add(siftBtn);
 
         Scene scene = new Scene(root, displayBounds.getWidth(), displayBounds.getHeight());
         scene.widthProperty().addListener(sceneSizeChangedListener);
@@ -374,7 +402,7 @@ public class LNDF extends Application {
 
         stage.setWidth(displayBounds.getWidth());
         stage.setHeight(displayBounds.getHeight());
-        capturedImage.setFitWidth(displayBounds.getWidth() / 3.5);
+        capturedImage.setFitWidth(displayBounds.getWidth() / 2);
 
         reloadBtn.setLayoutX(capturedImage.getX() + capturedImage.getFitWidth() - reloadBtn.getWidth() - 10);
         reloadBtn.setLayoutY(capturedImage.getY() + 10);
@@ -394,9 +422,21 @@ public class LNDF extends Application {
         prepImage.setX(capturedImage.getX() + capturedImageWidth + 40);
         prepImage.setY(capturedImage.getY());
 
+        siftImage.setFitWidth(capturedImageWidth / 1.5 + + 60);
+        siftImage.setFitHeight(prepImage.getLayoutBounds().getHeight());
+        siftImage.setEffect(new DropShadow(20, SHAPE_COLOR));
+        siftImage.setX(capturedImage.getX() + capturedImageWidth + 40);
+        siftImage.setY(capturedImage.getY() + prepImage.getLayoutBounds().getHeight() + 40);
+
+
         prepBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - prepBtn.getWidth() - 10);
         prepBtn.setLayoutY(roiImage.getY() + 10);
         prepBtn.setVisible(false);
+
+        siftBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - siftBtn.getWidth() - 10);
+        siftBtn.setLayoutY(roiImage.getY() + 50);
+        siftBtn.setVisible(true);
+
 
         timer.start();
     }
