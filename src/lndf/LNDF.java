@@ -4,6 +4,7 @@ import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.beans.value.ChangeListener;
 import javafx.beans.value.ObservableValue;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Group;
@@ -65,6 +66,7 @@ public class LNDF extends Application {
 
     private Image roiImageSrc;
     private ImageView roiImage;
+   private BufferedImage roiImageBuffered;
 
     private Image prepImageSrc;
     private ImageView prepImage;
@@ -76,7 +78,7 @@ public class LNDF extends Application {
     private ImageView surfImage;
 
     private Button reloadBtn;
-    private Button prepBtn;
+    private Button saveRoiBtn;
     private Button siftBtn;
 
     private double cutOutStartX;
@@ -95,7 +97,7 @@ public class LNDF extends Application {
         }
     };
     private EventHandler<? super MouseEvent> reloadHandler;
-    private EventHandler<MouseEvent> prepHandler;
+    private EventHandler<MouseEvent> saveRoiHandler;
     private EventHandler<MouseEvent> siftHandler;
 
     private long lastTimerCall = System.nanoTime();
@@ -110,6 +112,12 @@ public class LNDF extends Application {
                     capturedImageSrc = newOne;
                     capturedImage.setImage(capturedImageSrc);
                 }
+
+                boolean success = loadPrepImageFromCurrentROI();
+                if (!success) {
+                    System.out.println("Problems while loading currentPrepImage.");
+                }
+
                 lastTimerCall = now;
             }
         }
@@ -174,19 +182,15 @@ public class LNDF extends Application {
                     // - 1, for safety against raster exceptions
                     int cutOutRegionWidth = (int) ((cutOutRegion.getBoundsInLocal().getWidth() - 1) * ratio);
                     int cutOutRegionHeight = cutOutRegionWidth;
-
-//                    System.out.println("(" + cutOutStartX_ABSOLUTE + "," + cutOutStartY_ABSOLUTE + ")\t" + cutOutRegionWidth + ", " + cutOutRegionHeight);
-
                     try {
-                        writeAndLoadROI(cutOutStartX_ABSOLUTE, cutOutStartY_ABSOLUTE, cutOutRegionWidth, cutOutRegionHeight);
+                        showROI(cutOutStartX_ABSOLUTE, cutOutStartY_ABSOLUTE, cutOutRegionWidth, cutOutRegionHeight);
                     } catch (Exception e) {
                         System.out.println("An error occured. Details: " + e);
                     }
                 }
+                saveRoiBtn.setVisible(true);
                 timer.start();
             }
-
-
         };
 
         sceneSizeChangedListener = new ChangeListener<Number>() {
@@ -206,7 +210,7 @@ public class LNDF extends Application {
 //                System.out.println("RELOAD!");
                 cutOutRegion.setVisible(false);
                 roiImage.setVisible(false);
-                prepBtn.setVisible(false);
+                saveRoiBtn.setVisible(false);
                 prepImage.setVisible(false);
                 Image newOne = getMostRecentOrigin();
                 if (newOne != null) {
@@ -215,16 +219,15 @@ public class LNDF extends Application {
                 }
             }
         };
-        prepHandler = new EventHandler<MouseEvent>() {
+        saveRoiHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
-//                System.out.println("PREP!");
+//                System.out.println("Save ROI!");
                 try {
-                    // should do matlab on its own
-                    // runMatlabPreprocessing();
-                    boolean success = loadPrepImageFromCurrentROI();
-                    if (!success) {
-                        System.out.println("Problems while loading currentPrepImage.");
+                    try {
+                        saveRoi();
+                    } catch (Exception e) {
+                        System.out.println("An error occured. Details: " + e);
                     }
                 } catch (Exception e) {
                     System.out.println("An error occured. Details: " + e);
@@ -299,13 +302,17 @@ public class LNDF extends Application {
         }
     }
 
-    private void writeAndLoadROI(int cutOutStartX_ABSOLUTE, int cutOutStartY_ABSOLUTE, int cutOutRegionWidth, int cutOutRegionHeight) throws IOException {
-        BufferedImage bImage = ImageIO.read(new File(ORIGIN_DIR_NAME + currOriginName)).getSubimage(cutOutStartX_ABSOLUTE, cutOutStartY_ABSOLUTE, cutOutRegionWidth, cutOutRegionHeight);
-        File roiFile = new File(ROI_DIR_NAME + currRoiName);
-        ImageIO.write(bImage, "jpg", roiFile);
-        roiImage.setImage(new Image("file:" + ROI_DIR_NAME + currRoiName));
+    private void showROI(int x, int y, int width, int height) throws IOException {
+        roiImageBuffered = ImageIO.read(new File(ORIGIN_DIR_NAME + currOriginName)).getSubimage(x, y, width, height);
+        roiImageSrc = SwingFXUtils.toFXImage(roiImageBuffered, null);
+        roiImage.setImage(roiImageSrc);
         roiImage.setVisible(true);
-        prepBtn.setVisible(true);
+        saveRoiBtn.setVisible(true);
+    }
+
+    private void saveRoi() throws IOException {
+        File roiFile = new File(ROI_DIR_NAME + currRoiName);
+        ImageIO.write(roiImageBuffered, "jpg", roiFile);
     }
 
     @Override
@@ -327,10 +334,11 @@ public class LNDF extends Application {
         ImageView prepIcon = new ImageView(new Image("file:icons/prep-icon.png"));
         prepIcon.setFitWidth(20);
         prepIcon.setFitHeight(reloadIcon.getFitWidth());
-        prepBtn = new Button("", prepIcon);
-        prepBtn.setOnMousePressed(prepHandler);
+        saveRoiBtn = new Button("", prepIcon);
+        saveRoiBtn.setOnMousePressed(saveRoiHandler);
         siftBtn = new Button("", reloadIcon);
-        siftBtn.setOnMousePressed(siftHandler);}
+        siftBtn.setOnMousePressed(siftHandler);
+    }
 
     private void checkDirs() {
         if (!originDir.exists() || !originDir.isDirectory()) {
@@ -391,7 +399,7 @@ public class LNDF extends Application {
         root.getChildren().add(siftImage);
         root.getChildren().add(cutOutRegion);
         root.getChildren().add(reloadBtn);
-        root.getChildren().add(prepBtn);
+        root.getChildren().add(saveRoiBtn);
         root.getChildren().add(siftBtn);
 
         Scene scene = new Scene(root, displayBounds.getWidth(), displayBounds.getHeight());
@@ -422,16 +430,16 @@ public class LNDF extends Application {
         prepImage.setX(capturedImage.getX() + capturedImageWidth + 40);
         prepImage.setY(capturedImage.getY());
 
-        siftImage.setFitWidth(capturedImageWidth / 1.5 + + 60);
+        siftImage.setFitWidth(capturedImageWidth / 1.5 + +60);
         siftImage.setFitHeight(prepImage.getLayoutBounds().getHeight());
         siftImage.setEffect(new DropShadow(20, SHAPE_COLOR));
         siftImage.setX(capturedImage.getX() + capturedImageWidth + 40);
         siftImage.setY(capturedImage.getY() + prepImage.getLayoutBounds().getHeight() + 40);
 
 
-        prepBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - prepBtn.getWidth() - 10);
-        prepBtn.setLayoutY(roiImage.getY() + 10);
-        prepBtn.setVisible(false);
+        saveRoiBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - saveRoiBtn.getWidth() - 10);
+        saveRoiBtn.setLayoutY(roiImage.getY() + 10);
+        saveRoiBtn.setVisible(false);
 
         siftBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - siftBtn.getWidth() - 10);
         siftBtn.setLayoutY(roiImage.getY() + 50);
