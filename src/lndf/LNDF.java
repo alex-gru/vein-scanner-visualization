@@ -40,9 +40,10 @@ public class LNDF extends Application {
     private static final double CUTOUT_LINEWIDTH = 5;
     private static final Color SHAPE_COLOR = Color.YELLOW;
     private static final Color SHAPE_COLOR_ERROR = Color.RED;
-    private static final double CAPTURED_IMAGE_OFFSET = 100;
+    private static final double CAPTURED_IMAGE_OFFSET = 50;
     private static final String MATLAB_BIN_DIR = "C:\\Program Files\\MATLAB\\R2012a\\bin\\";
     private static final boolean RELOAD_BUTTON_VISIBLE = false;
+    private boolean prepAndSiftReadyToLoad = false;
 
     private double capturedImageWidth;
     //    private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
@@ -66,13 +67,19 @@ public class LNDF extends Application {
 
     private Image roiImageSrc;
     private ImageView roiImage;
-   private BufferedImage roiImageBuffered;
+    private BufferedImage roiImageBuffered;
 
     private Image prepImageSrc;
     private ImageView prepImage;
 
+    private Image prepWaImageSrc;
+    private ImageView prepWaImage;
+
     private Image siftImageSrc;
     private ImageView siftImage;
+
+    private Image siftWaImageSrc;
+    private ImageView siftWaImage;
 
     private Image surfImageSrc;
     private ImageView surfImage;
@@ -111,13 +118,43 @@ public class LNDF extends Application {
                 if (newOne != null) {
                     capturedImageSrc = newOne;
                     capturedImage.setImage(capturedImageSrc);
+                    roiImage.setVisible(false);
+                    saveRoiBtn.setVisible(false);
+                    siftBtn.setVisible(false);
+                    prepImage.setVisible(false);
+                    prepWaImage.setVisible(false);
+                    siftImage.setVisible(false);
+                    siftWaImage.setVisible(false);
                 }
+                if (prepAndSiftReadyToLoad) {
+                    if (cutOutRegion.getWidth() > 0 && cutOutRegion.getHeight() > 0) {
+                        boolean success = loadPrepImagesFromCurrentROI();
+                        if (!success) {
+                            System.out.println("Problems while loading currentPrepImage.");
+                            prepImage.setVisible(false);
+                            prepWaImage.setVisible(false);
+                        } else {
+                            prepImage.setVisible(true);
+                            prepWaImage.setVisible(true);
+                        }
 
-                boolean success = loadPrepImageFromCurrentROI();
-                if (!success) {
-                    System.out.println("Problems while loading currentPrepImage.");
+                        try {
+                            // should do matlab on its own
+                            // runMatlabPreprocessing();
+                            success = loadSiftImagesFromCurrentROI();
+                            if (!success) {
+                                System.out.println("Problems while loading currentSiftImage.");
+                                siftImage.setVisible(false);
+                                siftWaImage.setVisible(false);
+                            } else {
+                                siftImage.setVisible(true);
+                                siftWaImage.setVisible(true);
+                            }
+                        } catch (Exception e) {
+                            System.out.println("An error occured. Details: " + e);
+                        }
+                    }
                 }
-
                 lastTimerCall = now;
             }
         }
@@ -133,6 +170,8 @@ public class LNDF extends Application {
             public void handle(MouseEvent mouseEvent) {
                 //            System.out.println("CLICK!");
                 timer.stop();
+                prepAndSiftReadyToLoad = false;
+
                 cutOutStartX = mouseEvent.getX() - capturedImage.getX();
                 cutOutStartY = mouseEvent.getY() - capturedImage.getY();
 
@@ -187,8 +226,8 @@ public class LNDF extends Application {
                     } catch (Exception e) {
                         System.out.println("An error occured. Details: " + e);
                     }
+                    saveRoiBtn.setVisible(true);
                 }
-                saveRoiBtn.setVisible(true);
                 timer.start();
             }
         };
@@ -212,6 +251,7 @@ public class LNDF extends Application {
                 roiImage.setVisible(false);
                 saveRoiBtn.setVisible(false);
                 prepImage.setVisible(false);
+                prepWaImage.setVisible(false);
                 Image newOne = getMostRecentOrigin();
                 if (newOne != null) {
                     capturedImageSrc = newOne;
@@ -224,14 +264,12 @@ public class LNDF extends Application {
             public void handle(MouseEvent mouseEvent) {
 //                System.out.println("Save ROI!");
                 try {
-                    try {
-                        saveRoi();
-                    } catch (Exception e) {
-                        System.out.println("An error occured. Details: " + e);
-                    }
+                    saveRoi();
+//                    siftBtn.setVisible(true);
                 } catch (Exception e) {
                     System.out.println("An error occured. Details: " + e);
                 }
+                prepAndSiftReadyToLoad = true;
             }
         };
 
@@ -242,9 +280,14 @@ public class LNDF extends Application {
                 try {
                     // should do matlab on its own
                     // runMatlabPreprocessing();
-                    boolean success = loadSiftImageFromCurrentROI();
+                    boolean success = loadSiftImagesFromCurrentROI();
                     if (!success) {
                         System.out.println("Problems while loading currentSiftImage.");
+                        siftImage.setVisible(false);
+                        siftWaImage.setVisible(false);
+                    } else {
+                        siftImage.setVisible(true);
+                        siftWaImage.setVisible(true);
                     }
                 } catch (Exception e) {
                     System.out.println("An error occured. Details: " + e);
@@ -253,30 +296,45 @@ public class LNDF extends Application {
         };
     }
 
-    private boolean loadPrepImageFromCurrentROI() {
+    private boolean loadPrepImagesFromCurrentROI() {
         String fileString = PREP_DIR_NAME + currRoiName + "_prep.jpg";
-        System.out.println(fileString);
+        String fileStringWa = PREP_DIR_NAME + currRoiName + "_prep_wa.jpg";
+//        System.out.println(fileString);
+//        System.out.println(fileStringWa);
         File prepFile = new File(fileString);
-        if (!prepFile.exists()) {
+        File prepWaFile = new File(fileStringWa);
+        if (!prepFile.exists() || !prepWaFile.exists()) {
             return false;
         } else {
             prepImageSrc = new Image("file:" + fileString);
             prepImage.setImage(prepImageSrc);
             prepImage.setVisible(true);
+            prepWaImageSrc = new Image("file:" + fileStringWa);
+            prepWaImage.setImage(prepWaImageSrc);
+            prepWaImage.setVisible(true);
+
+            siftImage.setVisible(false);
+            siftWaImage.setVisible(false);
             return true;
         }
     }
 
-    private boolean loadSiftImageFromCurrentROI() {
+    private boolean loadSiftImagesFromCurrentROI() {
         String fileString = SIFT_DIR_NAME + currRoiName + "_xtr_sift.jpg";
+        String fileStringWa = SIFT_DIR_NAME + currRoiName + "_xtr_sift_wa.jpg";
         System.out.println("SIFT: " + fileString);
         File siftFile = new File(fileString);
-        if (!siftFile.exists()) {
+        File siftWaFile = new File(fileStringWa);
+        if (!siftFile.exists() || !siftWaFile.exists()) {
             return false;
         } else {
             siftImageSrc = new Image("file:" + fileString);
             siftImage.setImage(siftImageSrc);
             siftImage.setVisible(true);
+
+            siftWaImageSrc = new Image("file:" + fileStringWa);
+            siftWaImage.setImage(siftWaImageSrc);
+            siftWaImage.setVisible(true);
             return true;
         }
     }
@@ -337,7 +395,7 @@ public class LNDF extends Application {
         saveRoiBtn = new Button("", prepIcon);
         saveRoiBtn.setOnMousePressed(saveRoiHandler);
         siftBtn = new Button("", reloadIcon);
-        siftBtn.setOnMousePressed(siftHandler);
+//        siftBtn.setOnMousePressed(siftHandler);
     }
 
     private void checkDirs() {
@@ -363,7 +421,8 @@ public class LNDF extends Application {
 
     @Override
     public void start(Stage stage) {
-        Rectangle2D displayBounds = Screen.getPrimary().getVisualBounds();
+//        Rectangle2D displayBounds = Screen.getPrimary().getVisualBounds();
+        Rectangle2D displayBounds = Screen.getScreens().get(1).getVisualBounds();
 
         ImageView header = new ImageView(new Image("file:icons/header_low.png"));
         header.setPreserveRatio(true);
@@ -389,14 +448,18 @@ public class LNDF extends Application {
 
         roiImage = new ImageView();
         prepImage = new ImageView();
+        prepWaImage = new ImageView();
         siftImage = new ImageView();
+        siftWaImage = new ImageView();
 
         root.getChildren().add(header);
         root.getChildren().add(capturedImage);
         root.getChildren().add(lndf);
         root.getChildren().add(roiImage);
         root.getChildren().add(prepImage);
+        root.getChildren().add(prepWaImage);
         root.getChildren().add(siftImage);
+        root.getChildren().add(siftWaImage);
         root.getChildren().add(cutOutRegion);
         root.getChildren().add(reloadBtn);
         root.getChildren().add(saveRoiBtn);
@@ -410,7 +473,7 @@ public class LNDF extends Application {
 
         stage.setWidth(displayBounds.getWidth());
         stage.setHeight(displayBounds.getHeight());
-        capturedImage.setFitWidth(displayBounds.getWidth() / 2);
+        capturedImage.setFitWidth(displayBounds.getWidth() / 2.7);
 
         reloadBtn.setLayoutX(capturedImage.getX() + capturedImage.getFitWidth() - reloadBtn.getWidth() - 10);
         reloadBtn.setLayoutY(capturedImage.getY() + 10);
@@ -418,23 +481,38 @@ public class LNDF extends Application {
         capturedImageWidth = capturedImage.getBoundsInLocal().getWidth();
         capturedImageHeight = capturedImage.getBoundsInLocal().getHeight();
 
-        roiImage.setFitWidth(capturedImageWidth / 1.5);
+        roiImage.setFitWidth(capturedImageWidth);
         roiImage.setFitHeight(roiImage.getFitWidth());
         roiImage.setEffect(new DropShadow(20, SHAPE_COLOR));
         roiImage.setX(capturedImage.getX() + capturedImageWidth / 2 - roiImage.getLayoutBounds().getWidth() / 2);
-        roiImage.setY(capturedImage.getY() + capturedImageHeight + 40);
+        roiImage.setY(displayBounds.getHeight() - roiImage.getLayoutBounds().getHeight() - CAPTURED_IMAGE_OFFSET);
 
-        prepImage.setFitWidth(capturedImageWidth / 1.5);
-        prepImage.setFitHeight(roiImage.getFitWidth());
+        prepWaImage.setFitWidth(displayBounds.getWidth() / 4);
+        prepWaImage.setFitHeight(prepWaImage.getFitWidth());
+        prepWaImage.setEffect(new DropShadow(20, SHAPE_COLOR));
+        prepWaImage.setX(displayBounds.getWidth() - prepWaImage.getLayoutBounds().getWidth() - CAPTURED_IMAGE_OFFSET);
+        prepWaImage.setY(capturedImage.getY());
+        prepWaImage.setVisible(false);
+
+        prepImage.setFitWidth(displayBounds.getWidth() / 4);
+        prepImage.setFitHeight(prepImage.getFitWidth());
         prepImage.setEffect(new DropShadow(20, SHAPE_COLOR));
-        prepImage.setX(capturedImage.getX() + capturedImageWidth + 40);
+        prepImage.setX(prepWaImage.getX() - prepImage.getLayoutBounds().getWidth() - CAPTURED_IMAGE_OFFSET / 2);
         prepImage.setY(capturedImage.getY());
+        prepImage.setVisible(false);
 
-        siftImage.setFitWidth(capturedImageWidth / 1.5 + +60);
-        siftImage.setFitHeight(prepImage.getLayoutBounds().getHeight());
+
+        siftImage.setFitWidth(prepImage.getLayoutBounds().getWidth());
+        siftImage.setFitHeight(prepImage.getLayoutBounds().getHeight() * 0.7);
         siftImage.setEffect(new DropShadow(20, SHAPE_COLOR));
-        siftImage.setX(capturedImage.getX() + capturedImageWidth + 40);
-        siftImage.setY(capturedImage.getY() + prepImage.getLayoutBounds().getHeight() + 40);
+        siftImage.setX(prepImage.getX());
+        siftImage.setY(prepImage.getY() + prepImage.getLayoutBounds().getHeight() + CAPTURED_IMAGE_OFFSET);
+
+        siftWaImage.setFitWidth(prepWaImage.getLayoutBounds().getWidth());
+        siftWaImage.setFitHeight(prepWaImage.getLayoutBounds().getHeight() * 0.7);
+        siftWaImage.setEffect(new DropShadow(20, SHAPE_COLOR));
+        siftWaImage.setX(prepWaImage.getX());
+        siftWaImage.setY(siftImage.getY());
 
 
         saveRoiBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - saveRoiBtn.getWidth() - 10);
@@ -443,8 +521,7 @@ public class LNDF extends Application {
 
         siftBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - siftBtn.getWidth() - 10);
         siftBtn.setLayoutY(roiImage.getY() + 50);
-        siftBtn.setVisible(true);
-
+        siftBtn.setVisible(false);
 
         timer.start();
     }
@@ -458,7 +535,7 @@ public class LNDF extends Application {
             }
         }
 
-        System.out.println("mostRecentOrigin " + mostRecentOrigin.getName() + " vs " + currOriginName);
+//        System.out.println("mostRecentOrigin " + mostRecentOrigin.getName() + " vs " + currOriginName);
         if (mostRecentOrigin != null && !mostRecentOrigin.getName().equals(currOriginName)) {
             currOriginName = mostRecentOrigin.getName();
             currRoiName = currOriginName.replace(".", "_ROI.");
