@@ -18,12 +18,15 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.RectangleBuilder;
+import javafx.scene.text.Font;
+import javafx.scene.text.TextAlignment;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -40,18 +43,18 @@ public class LNDF extends Application {
     private static final String ORIGIN_DIR_NAME = "media/";
     private static final String ROI_DIR_NAME = ORIGIN_DIR_NAME + "ROI/";
     private static final String PREP_DIR_NAME = ORIGIN_DIR_NAME + "PREP/";
-    private static final String PREP_HISTORY_DIR_NAME = ORIGIN_DIR_NAME + "PREP/HISTORY/";
+    //    private static final String PREP_HISTORY_DIR_NAME = ORIGIN_DIR_NAME + "PREP/HISTORY/";
     private static final String SIFT_DIR_NAME = ORIGIN_DIR_NAME + "SIFT/";
     private static final String SURF_DIR_NAME = ORIGIN_DIR_NAME + "SURF/";
-    private static final String AGREED_DIR_NAME = ORIGIN_DIR_NAME + "AGREED/";
+    private static final String ORIGIN_WITH_ID_DIR_NAME = ORIGIN_DIR_NAME + "WITH_ID/";
 
     private File originDir = new File(ORIGIN_DIR_NAME);
+    private File originWithIDDir = new File(ORIGIN_WITH_ID_DIR_NAME);
     private File roiDir = new File(ROI_DIR_NAME);
     private File prepDir = new File(PREP_DIR_NAME);
-    private File prepHistoryDir = new File(PREP_HISTORY_DIR_NAME);
+    //    private File prepHistoryDir = new File(PREP_HISTORY_DIR_NAME);
     private File siftDir = new File(SIFT_DIR_NAME);
     private File surfDir = new File(SURF_DIR_NAME);
-    private File agreedDir = new File(AGREED_DIR_NAME);
 
     /* ------------------------------------------------
     MISC
@@ -63,8 +66,13 @@ public class LNDF extends Application {
     private static final String MATLAB_BIN_DIR = "C:\\Program Files\\MATLAB\\R2012a\\bin\\";
     private static final boolean RELOAD_BUTTON_VISIBLE = false;
     private static final double BUTTON_SIZE = 20;
-    private static final int SCREEN_INDEX = 0; //0: laptop, 1: external
-    private static final String MATLAB_PROCESSING_DIR = "C:\\Users\\alexgru-mobile\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
+    private static final int SCREEN_INDEX = 1; //0: laptop, 1: external
+    private static FileWriter agreedListFileWriter; //0: laptop, 1: external
+
+    // LAPTOP
+//    private static final String MATLAB_PROCESSING_DIR = "C:\\Users\\alexgru-mobile\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
+    // DESKTOP
+    private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
     private boolean atLeastOnceDragged = false;
 
     private int subject_count = 0;
@@ -145,7 +153,7 @@ public class LNDF extends Application {
     private long lastTimerCall = System.nanoTime();
     private static final long INTERVAL = 3_000_000_000l;
     private AnimationTimer timer = buildTimer();
-
+    private static final boolean alwaysResizeToFullScreen = true;
     /* ------------------------------------------------
    BASIC METHODS
     */
@@ -156,7 +164,17 @@ public class LNDF extends Application {
 
     @Override
     public void init() {
-        checkDirs();
+        checkDirsAndAgreedListFile();
+        try {
+            File agreedListFile = new File(ORIGIN_WITH_ID_DIR_NAME + "agreed_list.txt");
+            if (!agreedListFile.exists() || agreedListFile.isDirectory()) {
+                agreedListFile.createNewFile();
+            }
+            agreedListFileWriter = new FileWriter(agreedListFile, true);
+        } catch (IOException e) {
+            System.out.println("An error occured while trying to initialize agreed FileWriter. Details: ");
+            e.printStackTrace();
+        }
         cutOutRegion = RectangleBuilder.create().build();
         cutOutRegion.setStroke(SHAPE_COLOR);
         cutOutRegion.setStrokeWidth(CUTOUT_LINEWIDTH);
@@ -186,6 +204,8 @@ public class LNDF extends Application {
         agreeBtn.setOnMousePressed(agreeHandler);
 
         subjectCountLabel = new Label("#" + subject_count);
+        subjectCountLabel.setTextAlignment(TextAlignment.CENTER);
+        subjectCountLabel.setFont(new Font("Arial", 30));
         incrementSubjectBtn = new Button("+");
         incrementSubjectBtn.setOnMousePressed(subjectHandler);
         decrementSubjectBtn = new Button("-");
@@ -229,6 +249,8 @@ public class LNDF extends Application {
         scene.widthProperty().addListener(sceneSizeChangedListener);
 
         stage.setScene(scene);
+        stage.setX(displayBounds.getMinX());
+        stage.setFullScreen(true);
         stage.show();
 
         stage.setWidth(displayBounds.getWidth());
@@ -241,6 +263,11 @@ public class LNDF extends Application {
 
     @Override
     public void stop() {
+        try {
+            agreedListFileWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] parameters) {
@@ -250,9 +277,12 @@ public class LNDF extends Application {
     /* ------------------------------------------------
     SPECIALIZED METHODS
      */
-    private void checkDirs() {
+    private void checkDirsAndAgreedListFile() {
         if (!originDir.exists() || !originDir.isDirectory()) {
             originDir.mkdir();
+        }
+        if (!roiDir.exists() || !roiDir.isDirectory()) {
+            roiDir.mkdir();
         }
         if (!roiDir.exists() || !roiDir.isDirectory()) {
             roiDir.mkdir();
@@ -260,18 +290,17 @@ public class LNDF extends Application {
         if (!prepDir.exists() || !prepDir.isDirectory()) {
             prepDir.mkdir();
         }
-        if (!prepHistoryDir.exists() || !prepHistoryDir.isDirectory()) {
-            prepHistoryDir.mkdir();
-        }
+//        if (!prepHistoryDir.exists() || !prepHistoryDir.isDirectory()) {
+//            prepHistoryDir.mkdir();
+//        }
         if (!siftDir.exists() || !siftDir.isDirectory()) {
             siftDir.mkdir();
         }
         if (!surfDir.exists() || !surfDir.isDirectory()) {
             surfDir.mkdir();
         }
-
-        if (!agreedDir.exists() || !agreedDir.isDirectory()) {
-            agreedDir.mkdir();
+        if (!originWithIDDir.exists() || !originWithIDDir.isDirectory()) {
+            originWithIDDir.mkdir();
         }
     }
 
@@ -293,6 +322,7 @@ public class LNDF extends Application {
                         prepWaImage.setVisible(false);
                         siftImage.setVisible(false);
                         siftWaImage.setVisible(false);
+                        saveCapturedImageWithID();
                     }
                     if (prepAndSiftReadyToLoad) {
                         if (cutOutRegion.getWidth() > 0 && cutOutRegion.getHeight() > 0) {
@@ -462,7 +492,14 @@ public class LNDF extends Application {
         agreeHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
-                saveAgreedCapturedImage();
+                try {
+                    agreedListFileWriter.append("\n#" + subject_count);
+                    agreedListFileWriter.flush();
+                } catch (IOException e) {
+                    System.out.println("An error occured while trying to save current subjects id in file. Details: ");
+                    e.printStackTrace();
+                }
+                agreeBtn.setStyle(Styles.greenButtonStyle());
             }
         };
 
@@ -471,12 +508,15 @@ public class LNDF extends Application {
             public void handle(MouseEvent mouseEvent) {
                 if (((Button) mouseEvent.getSource()).getText().equals("+")) {
                     subject_count++;
+                    agreeBtn.setStyle(Styles.buttonStyle());
                 } else {
                     if (subject_count > 0) {
                         subject_count--;
+                        agreeBtn.setStyle(Styles.buttonStyle());
                     }
                 }
                 subjectCountLabel.setText("#" + subject_count);
+                System.out.println("Current: #" + subject_count);
             }
         };
         fileNameFilter = new FilenameFilter() {
@@ -573,38 +613,38 @@ public class LNDF extends Application {
         }
     }
 
-    private void saveAgreedCapturedImage() {
+    private void saveCapturedImageWithID() {
 
         File originFile = new File(ORIGIN_DIR_NAME + "\\" + currOriginName);
         File originFileRaw = new File(ORIGIN_DIR_NAME + "\\" + currOriginName.replace(".JPG", ".CR2"));
 //        System.out.println("AFTER: " + currOriginName);
-        File agreedFile = new File(AGREED_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_" + subject_count + ".JPG"));
-        File agreedFileRaw = new File(AGREED_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_" + subject_count + ".CR2"));
+        File fileWithID = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_ID" + subject_count + ".JPG"));
+        File fileWithIDRaw = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_ID" + subject_count + ".CR2"));
         try {
-            Files.copy(originFile.toPath(), agreedFile.toPath());
-            System.out.println("Saved agreed file.");
+            Files.copy(originFile.toPath(), fileWithID.toPath());
+            System.out.println("Saved ID file.");
         } catch (FileAlreadyExistsException e) {
-            System.out.println("Agreed file already exists.");
+            System.out.println("ID file already exists.");
         } catch (Exception e) {
-            System.out.println("Could not save agreed file. Reason: ");
+            System.out.println("Could not save ID file. Reason: ");
             e.printStackTrace();
         }
 
         try {
-            Files.copy(originFileRaw.toPath(), agreedFileRaw.toPath());
-            System.out.println("Saved agreed raw file.");
+            Files.copy(originFileRaw.toPath(), fileWithIDRaw.toPath());
+            System.out.println("Saved ID raw file.");
         } catch (FileAlreadyExistsException e) {
-            System.out.println("Agreed raw file already exists.");
+            System.out.println("ID raw file already exists.");
         } catch (Exception e) {
-            System.out.println("Could not save agreed raw file. Reason: ");
+            System.out.println("Could not save ID raw file. Reason: ");
             e.printStackTrace();
         }
 
-        if (agreedFile.exists() && agreedFileRaw.exists()) {
-            agreeBtn.setStyle(Styles.greenButtonStyle());
-        } else {
-            agreeBtn.setStyle(Styles.buttonStyle());
-        }
+//        if (agreedFile.exists() && agreedFileRaw.exists()) {
+//            agreeBtn.setStyle(Styles.greenButtonStyle());
+//        } else {
+//            agreeBtn.setStyle(Styles.buttonStyle());
+//        }
     }
 
     private void addElementsToRoot(Group root) {
@@ -628,6 +668,7 @@ public class LNDF extends Application {
 
     private void initializeCapturedImage() {
         capturedImageSrc = getMostRecentOrigin();
+        saveCapturedImageWithID();
         capturedImage.setImage(capturedImageSrc);
         capturedImage.setPreserveRatio(true);
         capturedImage.setX(CAPTURED_IMAGE_OFFSET);
@@ -679,13 +720,13 @@ public class LNDF extends Application {
         prepImage.setVisible(false);
 
         siftImage.setFitWidth(prepImage.getLayoutBounds().getWidth());
-        siftImage.setFitHeight(prepImage.getLayoutBounds().getHeight() * 0.8);
+        siftImage.setFitHeight(prepImage.getLayoutBounds().getHeight() * 0.75);
         siftImage.setEffect(new DropShadow(20, SHAPE_COLOR));
         siftImage.setX(prepImage.getX());
         siftImage.setY(prepImage.getY() + prepImage.getLayoutBounds().getHeight() + CAPTURED_IMAGE_OFFSET);
 
         siftWaImage.setFitWidth(prepWaImage.getLayoutBounds().getWidth());
-        siftWaImage.setFitHeight(prepWaImage.getLayoutBounds().getHeight() * 0.8);
+        siftWaImage.setFitHeight(prepWaImage.getLayoutBounds().getHeight() * 0.75);
         siftWaImage.setEffect(new DropShadow(20, SHAPE_COLOR));
         siftWaImage.setX(prepWaImage.getX());
         siftWaImage.setY(siftImage.getY());
@@ -702,14 +743,14 @@ public class LNDF extends Application {
         agreeBtn.setLayoutY(capturedImage.getY() + 10);
         agreeBtn.setVisible(true);
 
-        subjectCountLabel.setLayoutX(capturedImage.getX() + capturedImageWidth - 2 * CAPTURED_IMAGE_OFFSET);
+        subjectCountLabel.setLayoutX(capturedImage.getX() + capturedImageWidth - 4 * CAPTURED_IMAGE_OFFSET);
         subjectCountLabel.setLayoutY(capturedImage.getY() - subjectCountLabel.getHeight() - 20);
 
-        incrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() + subjectCountLabel.getWidth() + 20);
+        incrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() + subjectCountLabel.getWidth() + 30);
         incrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY());
         incrementSubjectBtn.setVisible(true);
 
-        decrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() - decrementSubjectBtn.getWidth() - 20);
+        decrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() - decrementSubjectBtn.getWidth() - 30);
         decrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY());
         decrementSubjectBtn.setVisible(true);
     }
