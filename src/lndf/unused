@@ -1,0 +1,21 @@
+
+    private void runMatlabPreprocessing() throws IOException, InterruptedException {
+        // matlabs job now
+        // moveCurrentPrepsToHistory();
+        Runtime runtime = Runtime.getRuntime();
+        String cmd = MATLAB_BIN_DIR + "matlab.exe -nodisplay -nosplash -nodesktop -hidden -r run('" + MATLAB_PROCESSING_DIR + "f_HandVene_Single.m');exit;";
+        System.out.println(cmd);
+        Process process = runtime.exec(cmd);
+        process.waitFor();
+    }
+
+    private void moveCurrentPrepsToHistory() {
+        for (final File f : prepDir.listFiles(fileNameFilter)) {
+            File newDest = new File(prepHistoryDir + "\\" + f.getName());
+//            System.out.println(newDest.getAbsolutePath());
+            if (!f.renameTo(newDest)) {
+                newDest.delete();
+                f.renameTo(newDest);
+            }
+        }
+    }
