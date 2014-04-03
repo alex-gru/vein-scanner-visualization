@@ -118,6 +118,7 @@ public class LNDF extends Application {
       */
     private Button reloadBtn;
     private Button saveRoiBtn;
+    private Button prepBtn;
     private Button siftBtn;
     private Button agreeBtn;
     private Button incrementSubjectBtn;
@@ -142,6 +143,7 @@ public class LNDF extends Application {
     private ChangeListener<? super Number> sceneSizeChangedListener;
     private EventHandler<? super MouseEvent> reloadHandler;
     private EventHandler<MouseEvent> saveRoiHandler;
+    private EventHandler<MouseEvent> prepHandler;
     private EventHandler<MouseEvent> siftHandler;
     private EventHandler<MouseEvent> agreeHandler;
     private EventHandler<MouseEvent> subjectHandler;
@@ -181,26 +183,41 @@ public class LNDF extends Application {
         cutOutRegion.setFill(Color.TRANSPARENT);
         cutOutRegion.setMouseTransparent(true);
 
-        ImageView reloadIcon = new ImageView(new Image("file:icons/reload-icon.png"));
-        reloadIcon.setFitWidth(BUTTON_SIZE);
-        reloadIcon.setFitHeight(reloadIcon.getFitWidth());
-        reloadBtn = new Button("", reloadIcon);
-        reloadBtn.setOnMousePressed(reloadHandler);
-        reloadBtn.setVisible(RELOAD_BUTTON_VISIBLE);
+//        ImageView reloadIcon = new ImageView(new Image("file:icons/reload-icon.png"));
+//        reloadIcon.setFitWidth(BUTTON_SIZE);
+//        reloadIcon.setFitHeight(reloadIcon.getFitWidth());
+//        reloadBtn = new Button("", reloadIcon);
+//        reloadBtn.setOnMousePressed(reloadHandler);
+//        reloadBtn.setVisible(RELOAD_BUTTON_VISIBLE);
+//        reloadBtn.setStyle(Styles.buttonStyle());
+
+        ImageView saveRoiIcon = new ImageView(new Image("file:icons/saveroi-icon.png"));
+        saveRoiIcon.setFitWidth(BUTTON_SIZE);
+        saveRoiIcon.setFitHeight(BUTTON_SIZE);
+//        saveRoiBtn = new Button("Start Processing", saveRoiIcon);
+        saveRoiBtn = new Button("START");
+        saveRoiBtn.setOnMousePressed(saveRoiHandler);
 
         ImageView prepIcon = new ImageView(new Image("file:icons/prep-icon.png"));
         prepIcon.setFitWidth(BUTTON_SIZE);
-        prepIcon.setFitHeight(reloadIcon.getFitWidth());
-        saveRoiBtn = new Button("", prepIcon);
-        saveRoiBtn.setOnMousePressed(saveRoiHandler);
-        siftBtn = new Button("", reloadIcon);
-//        siftBtn.setOnMousePressed(siftHandler);
+        prepIcon.setFitHeight(BUTTON_SIZE);
+//        prepBtn = new Button("Load preprocessed files", prepIcon);
+        prepBtn = new Button("PREP");
+        prepBtn.setOnMousePressed(prepHandler);
+
+        ImageView siftIcon = new ImageView(new Image("file:icons/sift-icon.png"));
+        siftIcon.setFitWidth(BUTTON_SIZE);
+        siftIcon.setFitHeight(BUTTON_SIZE);
+//        siftBtn = new Button("Load SIFT files", siftIcon);
+        siftBtn = new Button("SIFT");
+        siftBtn.setOnMousePressed(siftHandler);
 
         ImageView agreeIcon = new ImageView(new Image("file:icons/agree-icon.png"));
         agreeIcon.setFitWidth(BUTTON_SIZE);
         agreeIcon.setFitHeight(agreeIcon.getFitWidth());
 
-        agreeBtn = new Button("", agreeIcon);
+//        agreeBtn = new Button("Agree", agreeIcon);
+        agreeBtn = new Button("Agree");
         agreeBtn.setOnMousePressed(agreeHandler);
 
         subjectCountLabel = new Label("#" + subject_count);
@@ -212,7 +229,7 @@ public class LNDF extends Application {
         decrementSubjectBtn.setOnMousePressed(subjectHandler);
 
         saveRoiBtn.setStyle(Styles.buttonStyle());
-        reloadBtn.setStyle(Styles.buttonStyle());
+        prepBtn.setStyle(Styles.buttonStyle());
         siftBtn.setStyle(Styles.buttonStyle());
         agreeBtn.setStyle(Styles.buttonStyle());
 
@@ -249,7 +266,7 @@ public class LNDF extends Application {
         scene.widthProperty().addListener(sceneSizeChangedListener);
 
         stage.setScene(scene);
-        stage.setX(displayBounds.getMinX());
+        stage.setY(displayBounds.getMinY());
         stage.setFullScreen(true);
         stage.show();
 
@@ -317,6 +334,7 @@ public class LNDF extends Application {
                         capturedImage.setImage(capturedImageSrc);
                         roiImage.setVisible(false);
                         saveRoiBtn.setVisible(false);
+                        prepBtn.setVisible(false);
                         siftBtn.setVisible(false);
                         prepImage.setVisible(false);
                         prepWaImage.setVisible(false);
@@ -324,35 +342,37 @@ public class LNDF extends Application {
                         siftWaImage.setVisible(false);
                         saveCapturedImageWithID();
                     }
-                    if (prepAndSiftReadyToLoad) {
-                        if (cutOutRegion.getWidth() > 0 && cutOutRegion.getHeight() > 0) {
-                            boolean success = loadPrepImagesFromCurrentROI();
-                            if (!success) {
-                                System.out.println("currentPrepImages not available yet, will try again in a few seconds.");
-                                prepImage.setVisible(false);
-                                prepWaImage.setVisible(false);
-                            } else {
-                                prepImage.setVisible(true);
-                                prepWaImage.setVisible(true);
-//                            System.out.println("loading currentPrepImages");
-                            }
-
-                            try {
-                                success = loadSiftImagesFromCurrentROI();
-                                if (!success) {
-                                    System.out.println("currentSiftImages not available yet, will try again in a few seconds.");
-                                    siftImage.setVisible(false);
-                                    siftWaImage.setVisible(false);
-                                } else {
-//                                System.out.println("loading currentSiftImages");
-                                    siftImage.setVisible(true);
-                                    siftWaImage.setVisible(true);
-                                }
-                            } catch (Exception e) {
-                                System.out.println("An error occured. Details: " + e);
-                            }
-                        }
-                    }
+//                    if (prepAndSiftReadyToLoad) {
+//                        if (cutOutRegion.getWidth() > 0 && cutOutRegion.getHeight() > 0) {
+//
+//                            boolean success = loadPrepImagesFromCurrentROI();
+//                            if (!success) {
+//                                System.out.println("currentPrepImages not available yet, will try again in a few seconds.");
+//                                prepImage.setVisible(false);
+//                                prepWaImage.setVisible(false);
+//                            } else {
+//                                prepImage.setVisible(true);
+//                                prepWaImage.setVisible(true);
+////                            System.out.println("loading currentPrepImages");
+//                            }
+//
+//                            try {
+//                                success = loadSiftImagesFromCurrentROI();
+//                                if (!success) {
+//                                    System.out.println("currentSiftImages not available yet, will try again in a few seconds.");
+//                                    siftImage.setVisible(false);
+//                                    siftWaImage.setVisible(false);
+//                                } else {
+////                                System.out.println("loading currentSiftImages");
+//                                    siftImage.setVisible(true);
+//                                    siftWaImage.setVisible(true);
+//                                }
+//
+//                            } catch (Exception e) {
+//                                System.out.println("An error occured. Details: " + e);
+//                            }
+//                        }
+//                    }
                     lastTimerCall = now;
                 }
             }
@@ -407,6 +427,8 @@ public class LNDF extends Application {
                         && cutOutEndX > cutOutStartX && cutOutEndY > cutOutStartY
                         && atLeastOnceDragged) {
                     saveRoiBtn.setStyle(Styles.buttonStyle());
+                    prepBtn.setStyle(Styles.buttonStyle());
+                    siftBtn.setStyle(Styles.buttonStyle());
                     double ratio = capturedImageSrc.getWidth() / capturedImage.getFitWidth();
 
                     int cutOutStartX_ABSOLUTE = (int) (cutOutStartX * ratio);
@@ -421,6 +443,8 @@ public class LNDF extends Application {
                         System.out.println("An error occured. Details: " + e);
                     }
                     saveRoiBtn.setVisible(true);
+                    prepBtn.setVisible(true);
+                    siftBtn.setVisible(true);
                 }
                 timer.start();
             }
@@ -467,16 +491,44 @@ public class LNDF extends Application {
             }
         };
 
-        siftHandler = new EventHandler<MouseEvent>() {
+        prepHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
 //                System.out.println("PREP!");
+                boolean success = false;
+
                 try {
-                    // should do matlab on its own
-                    // runMatlabPreprocessing();
-                    boolean success = loadSiftImagesFromCurrentROI();
+                    success = loadPrepImagesFromCurrentROI();
                     if (!success) {
-                        System.out.println("Problems while loading currentSiftImage.");
+                        System.out.println("Problems while loading currentPrepImages.");
+                        prepImage.setVisible(false);
+                        prepWaImage.setVisible(false);
+                    } else {
+                        prepImage.setVisible(true);
+                        prepWaImage.setVisible(true);
+                    }
+                } catch (Exception e) {
+                    System.out.println("An error occured. Details: " + e);
+                }
+
+                if (success) {
+                    prepBtn.setStyle(Styles.greenButtonStyle());
+                } else {
+                    prepBtn.setStyle(Styles.buttonStyle());
+                }
+            }
+        };
+
+        siftHandler = new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent mouseEvent) {
+//                System.out.println("SIFT!");
+                boolean success = false;
+
+                try {
+                    success = loadSiftImagesFromCurrentROI();
+                    if (!success) {
+                        System.out.println("Problems while loading currentSiftImages.");
                         siftImage.setVisible(false);
                         siftWaImage.setVisible(false);
                     } else {
@@ -485,6 +537,13 @@ public class LNDF extends Application {
                     }
                 } catch (Exception e) {
                     System.out.println("An error occured. Details: " + e);
+                }
+
+                if (success) {
+                    siftBtn.setStyle(Styles.greenButtonStyle());
+                } else {
+                    siftBtn.setStyle(Styles.buttonStyle());
+
                 }
             }
         };
@@ -552,8 +611,8 @@ public class LNDF extends Application {
             prepWaImage.setImage(prepWaImageSrc);
             prepWaImage.setVisible(true);
 
-            siftImage.setVisible(false);
-            siftWaImage.setVisible(false);
+//            siftImage.setVisible(false);
+//            siftWaImage.setVisible(false);
             return true;
         }
     }
@@ -626,8 +685,8 @@ public class LNDF extends Application {
         } catch (FileAlreadyExistsException e) {
             System.out.println("ID file already exists.");
         } catch (Exception e) {
-            System.out.println("Could not save ID file. Reason: ");
-            e.printStackTrace();
+            System.out.println("Could not save ID file.");
+//            e.printStackTrace();
         }
 
         try {
@@ -636,15 +695,9 @@ public class LNDF extends Application {
         } catch (FileAlreadyExistsException e) {
             System.out.println("ID raw file already exists.");
         } catch (Exception e) {
-            System.out.println("Could not save ID raw file. Reason: ");
-            e.printStackTrace();
+            System.out.println("Could not save ID raw file.");
+//            e.printStackTrace();
         }
-
-//        if (agreedFile.exists() && agreedFileRaw.exists()) {
-//            agreeBtn.setStyle(Styles.greenButtonStyle());
-//        } else {
-//            agreeBtn.setStyle(Styles.buttonStyle());
-//        }
     }
 
     private void addElementsToRoot(Group root) {
@@ -657,8 +710,9 @@ public class LNDF extends Application {
         root.getChildren().add(siftImage);
         root.getChildren().add(siftWaImage);
         root.getChildren().add(cutOutRegion);
-        root.getChildren().add(reloadBtn);
+//        root.getChildren().add(reloadBtn);
         root.getChildren().add(saveRoiBtn);
+        root.getChildren().add(prepBtn);
         root.getChildren().add(siftBtn);
         root.getChildren().add(agreeBtn);
         root.getChildren().add(incrementSubjectBtn);
@@ -693,8 +747,8 @@ public class LNDF extends Application {
     private void setLayoutProperties() {
         capturedImage.setFitWidth(displayBounds.getWidth() / 2.7);
 
-        reloadBtn.setLayoutX(capturedImage.getX() + capturedImage.getFitWidth() - reloadBtn.getWidth() - 10);
-        reloadBtn.setLayoutY(capturedImage.getY() + 10);
+//        reloadBtn.setLayoutX(capturedImage.getX() + capturedImage.getFitWidth() - reloadBtn.getWidth() - 10);
+//        reloadBtn.setLayoutY(capturedImage.getY() + 10);
 
         capturedImageWidth = capturedImage.getBoundsInLocal().getWidth();
         capturedImageHeight = capturedImage.getBoundsInLocal().getHeight();
@@ -702,7 +756,7 @@ public class LNDF extends Application {
         roiImage.setFitWidth(capturedImageWidth / 2);
         roiImage.setFitHeight(roiImage.getFitWidth());
         roiImage.setEffect(new DropShadow(20, SHAPE_COLOR));
-        roiImage.setX(capturedImage.getX() + capturedImageWidth / 2 - roiImage.getLayoutBounds().getWidth() / 2);
+        roiImage.setX(capturedImage.getX() + capturedImageWidth - roiImage.getLayoutBounds().getWidth());
         roiImage.setY(displayBounds.getHeight() - roiImage.getLayoutBounds().getHeight() - CAPTURED_IMAGE_OFFSET);
 
         prepWaImage.setFitWidth(displayBounds.getWidth() / 4);
@@ -731,20 +785,20 @@ public class LNDF extends Application {
         siftWaImage.setX(prepWaImage.getX());
         siftWaImage.setY(siftImage.getY());
 
-        saveRoiBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - saveRoiBtn.getWidth() - 10);
-        saveRoiBtn.setLayoutY(roiImage.getY() + 10);
+        saveRoiBtn.setLayoutX(CAPTURED_IMAGE_OFFSET);
+        saveRoiBtn.setLayoutY(roiImage.getY());
         saveRoiBtn.setVisible(false);
 
-        siftBtn.setLayoutX(roiImage.getX() + roiImage.getFitWidth() - siftBtn.getWidth() - 10);
-        siftBtn.setLayoutY(roiImage.getY() + 50);
+        prepBtn.setLayoutX(saveRoiBtn.getLayoutX());
+        prepBtn.setLayoutY(saveRoiBtn.getLayoutY() + 50);
+        prepBtn.setVisible(false);
+
+        siftBtn.setLayoutX(prepBtn.getLayoutX());
+        siftBtn.setLayoutY(prepBtn.getLayoutY() + 50);
         siftBtn.setVisible(false);
 
-        agreeBtn.setLayoutX(capturedImage.getX() + capturedImage.getFitWidth() - agreeBtn.getWidth() - 10);
-        agreeBtn.setLayoutY(capturedImage.getY() + 10);
-        agreeBtn.setVisible(true);
-
-        subjectCountLabel.setLayoutX(capturedImage.getX() + capturedImageWidth - 4 * CAPTURED_IMAGE_OFFSET);
-        subjectCountLabel.setLayoutY(capturedImage.getY() - subjectCountLabel.getHeight() - 20);
+        subjectCountLabel.setLayoutX(capturedImage.getX() + 2* CAPTURED_IMAGE_OFFSET);
+        subjectCountLabel.setLayoutY(displayBounds.getHeight() - subjectCountLabel.getHeight() - 20);
 
         incrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() + subjectCountLabel.getWidth() + 30);
         incrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY());
@@ -753,5 +807,9 @@ public class LNDF extends Application {
         decrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() - decrementSubjectBtn.getWidth() - 30);
         decrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY());
         decrementSubjectBtn.setVisible(true);
+
+        agreeBtn.setLayoutX(decrementSubjectBtn.getLayoutX());
+        agreeBtn.setLayoutY(decrementSubjectBtn.getLayoutY() - decrementSubjectBtn.getHeight() - 10);
+        agreeBtn.setVisible(true);
     }
 }
