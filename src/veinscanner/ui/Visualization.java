@@ -1,9 +1,7 @@
-package lndf;
+package veinscanner.ui;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.event.EventHandler;
 import javafx.geometry.Rectangle2D;
@@ -33,9 +31,18 @@ import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 
 /**
- * Created by alexgru-mobile on 18.03.14.
+ * This visualization is used in combination with the Hand Vein Scanner constructed at the Department of Computer
+ * Sciences in Salzburg. The captured image is stored in the subdirectory ORIGIN_DIR_NAME. One can now obtain a squared region
+ * of this image, but clicking on the image and dragging it over the image. After releasing the mouse, the chosen region
+ * can now be saved for further processing in MATLAB. After MATLAB has finished it's preprocessing and feature
+ * extraction routine, one can load the results into this visualization. Furthermore, one can control the subject ID
+ * counter, which determines the storing routine with subject IDs in subfolder ORIGIN_WITH_ID_DIR_NAME.
+ *
+ *
+ * @author Alex Gru (Department of Computer Sciences, University of Salzburg)
+ * @version 1.0
  */
-public class LNDF extends Application {
+public class Visualization extends Application {
 
     /* ------------------------------------------------
     DIRECTORIES
@@ -43,7 +50,6 @@ public class LNDF extends Application {
     private static final String ORIGIN_DIR_NAME = "media/";
     private static final String ROI_DIR_NAME = ORIGIN_DIR_NAME + "ROI/";
     private static final String PREP_DIR_NAME = ORIGIN_DIR_NAME + "PREP/";
-    //    private static final String PREP_HISTORY_DIR_NAME = ORIGIN_DIR_NAME + "PREP/HISTORY/";
     private static final String SIFT_DIR_NAME = ORIGIN_DIR_NAME + "SIFT/";
     private static final String SURF_DIR_NAME = ORIGIN_DIR_NAME + "SURF/";
     private static final String ORIGIN_WITH_ID_DIR_NAME = ORIGIN_DIR_NAME + "WITH_ID/";
@@ -52,7 +58,6 @@ public class LNDF extends Application {
     private File originWithIDDir = new File(ORIGIN_WITH_ID_DIR_NAME);
     private File roiDir = new File(ROI_DIR_NAME);
     private File prepDir = new File(PREP_DIR_NAME);
-    //    private File prepHistoryDir = new File(PREP_HISTORY_DIR_NAME);
     private File siftDir = new File(SIFT_DIR_NAME);
     private File surfDir = new File(SURF_DIR_NAME);
 
@@ -63,21 +68,14 @@ public class LNDF extends Application {
     private static final Color SHAPE_COLOR = Color.YELLOW;
     private static final Color SHAPE_COLOR_ERROR = Color.RED;
     private static final double CAPTURED_IMAGE_OFFSET = 50;
-    private static final String MATLAB_BIN_DIR = "C:\\Program Files\\MATLAB\\R2012a\\bin\\";
-    private static final boolean RELOAD_BUTTON_VISIBLE = false;
     private static final double BUTTON_SIZE = 20;
     private static final int SCREEN_INDEX = 1; //0: laptop, 1: external
     private static FileWriter agreedListFileWriter; //0: laptop, 1: external
-
-    // LAPTOP
-//    private static final String MATLAB_PROCESSING_DIR = "C:\\Users\\alexgru-mobile\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
-    // DESKTOP
     private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
     private boolean atLeastOnceDragged = false;
-
     private int subject_count = 0;
     private Rectangle2D displayBounds;
-    private boolean prepAndSiftReadyToLoad = false;
+
     /* ------------------------------------------------
     DISPLAYED IMAGES
      */
@@ -88,8 +86,6 @@ public class LNDF extends Application {
     private double capturedImageHeight;
     private String currOriginName;
     private String currRoiName;
-    private String currPrepName;
-    private String currSiftName;
 
     private Image capturedImageSrc;
     private ImageView capturedImage;
@@ -110,13 +106,9 @@ public class LNDF extends Application {
     private Image siftWaImageSrc;
     private ImageView siftWaImage;
 
-    private Image surfImageSrc;
-    private ImageView surfImage;
-
     /* ------------------------------------------------
      BUTTONS, LABELS
       */
-    private Button reloadBtn;
     private Button saveRoiBtn;
     private Button prepBtn;
     private Button siftBtn;
@@ -140,13 +132,11 @@ public class LNDF extends Application {
     private EventHandler<? super MouseEvent> mousePressedHandler;
     private EventHandler<? super MouseEvent> mouseDraggedHandler;
     private EventHandler<? super MouseEvent> mouseReleasedHandler;
-    private ChangeListener<? super Number> sceneSizeChangedListener;
-    private EventHandler<? super MouseEvent> reloadHandler;
     private EventHandler<MouseEvent> saveRoiHandler;
     private EventHandler<MouseEvent> prepHandler;
     private EventHandler<MouseEvent> siftHandler;
     private EventHandler<MouseEvent> agreeHandler;
-    private EventHandler<MouseEvent> subjectHandler;
+    private EventHandler<MouseEvent> subjectCountHandler;
     private FilenameFilter fileNameFilter;
 
     /* ------------------------------------------------
@@ -155,18 +145,24 @@ public class LNDF extends Application {
     private long lastTimerCall = System.nanoTime();
     private static final long INTERVAL = 3_000_000_000l;
     private AnimationTimer timer = buildTimer();
-    private static final boolean alwaysResizeToFullScreen = true;
+
     /* ------------------------------------------------
    BASIC METHODS
     */
 
-    public LNDF() {
-        initializeHandlers();
+    /**
+     * Contructor calls two initializing methods.
+     */
+    public Visualization() {
+        initializeHandlersAndFilters();
+        checkDirsAndFilesExistence();
     }
 
+    /**
+     * Here, most of the UI elements are initialized.
+     */
     @Override
     public void init() {
-        checkDirsAndAgreedListFile();
         try {
             File agreedListFile = new File(ORIGIN_WITH_ID_DIR_NAME + "agreed_list.txt");
             if (!agreedListFile.exists() || agreedListFile.isDirectory()) {
@@ -183,32 +179,21 @@ public class LNDF extends Application {
         cutOutRegion.setFill(Color.TRANSPARENT);
         cutOutRegion.setMouseTransparent(true);
 
-//        ImageView reloadIcon = new ImageView(new Image("file:icons/reload-icon.png"));
-//        reloadIcon.setFitWidth(BUTTON_SIZE);
-//        reloadIcon.setFitHeight(reloadIcon.getFitWidth());
-//        reloadBtn = new Button("", reloadIcon);
-//        reloadBtn.setOnMousePressed(reloadHandler);
-//        reloadBtn.setVisible(RELOAD_BUTTON_VISIBLE);
-//        reloadBtn.setStyle(Styles.buttonStyle());
-
         ImageView saveRoiIcon = new ImageView(new Image("file:icons/saveroi-icon.png"));
         saveRoiIcon.setFitWidth(BUTTON_SIZE);
         saveRoiIcon.setFitHeight(BUTTON_SIZE);
-//        saveRoiBtn = new Button("Start Processing", saveRoiIcon);
         saveRoiBtn = new Button("START");
         saveRoiBtn.setOnMousePressed(saveRoiHandler);
 
         ImageView prepIcon = new ImageView(new Image("file:icons/prep-icon.png"));
         prepIcon.setFitWidth(BUTTON_SIZE);
         prepIcon.setFitHeight(BUTTON_SIZE);
-//        prepBtn = new Button("Load preprocessed files", prepIcon);
         prepBtn = new Button("PREP");
         prepBtn.setOnMousePressed(prepHandler);
 
         ImageView siftIcon = new ImageView(new Image("file:icons/sift-icon.png"));
         siftIcon.setFitWidth(BUTTON_SIZE);
         siftIcon.setFitHeight(BUTTON_SIZE);
-//        siftBtn = new Button("Load SIFT files", siftIcon);
         siftBtn = new Button("SIFT");
         siftBtn.setOnMousePressed(siftHandler);
 
@@ -216,7 +201,6 @@ public class LNDF extends Application {
         agreeIcon.setFitWidth(BUTTON_SIZE);
         agreeIcon.setFitHeight(agreeIcon.getFitWidth());
 
-//        agreeBtn = new Button("Agree", agreeIcon);
         agreeBtn = new Button("Agree");
         agreeBtn.setOnMousePressed(agreeHandler);
 
@@ -224,9 +208,9 @@ public class LNDF extends Application {
         subjectCountLabel.setTextAlignment(TextAlignment.CENTER);
         subjectCountLabel.setFont(new Font("Arial", 30));
         incrementSubjectBtn = new Button("+");
-        incrementSubjectBtn.setOnMousePressed(subjectHandler);
+        incrementSubjectBtn.setOnMousePressed(subjectCountHandler);
         decrementSubjectBtn = new Button("-");
-        decrementSubjectBtn.setOnMousePressed(subjectHandler);
+        decrementSubjectBtn.setOnMousePressed(subjectCountHandler);
 
         saveRoiBtn.setStyle(Styles.buttonStyle());
         prepBtn.setStyle(Styles.buttonStyle());
@@ -238,16 +222,17 @@ public class LNDF extends Application {
         decrementSubjectBtn.setStyle(Styles.buttonStyle());
     }
 
+    /**
+     * Stage elements are loaded and initialized.
+     */
     @Override
     public void start(Stage stage) throws Exception {
-//        Rectangle2D displayBounds = Screen.getPrimary().getVisualBounds();
         try {
             displayBounds = Screen.getScreens().get(SCREEN_INDEX).getVisualBounds();
         } catch (IndexOutOfBoundsException e) {
             throw new Exception("Screen index invalid. Check screen setup!");
         }
 
-        // load header images
         loadHeaderImages();
 
         capturedImage = new ImageView();
@@ -263,30 +248,34 @@ public class LNDF extends Application {
         addElementsToRoot(root);
 
         Scene scene = new Scene(root, displayBounds.getWidth(), displayBounds.getHeight());
-        scene.widthProperty().addListener(sceneSizeChangedListener);
-
         stage.setScene(scene);
+        stage.setX(displayBounds.getMinX());
         stage.setY(displayBounds.getMinY());
         stage.setFullScreen(true);
         stage.show();
-
         stage.setWidth(displayBounds.getWidth());
         stage.setHeight(displayBounds.getHeight());
 
         setLayoutProperties();
-
         timer.start();
     }
 
+    /**
+     * When closing the program, the file writer is closed and timer stopped.
+     */
     @Override
     public void stop() {
         try {
             agreedListFileWriter.close();
+            timer.stop();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
+    /**
+     * As known, the main method just launches the application. No parameters are used.
+     */
     public static void main(String[] parameters) {
         launch(parameters);
     }
@@ -294,7 +283,11 @@ public class LNDF extends Application {
     /* ------------------------------------------------
     SPECIALIZED METHODS
      */
-    private void checkDirsAndAgreedListFile() {
+    /**
+     * Captured images, ROI images, PREP images and SIFT images are stored in specified directories. In this routine,
+     * the existence of those directories is checked.
+     */
+    private void checkDirsAndFilesExistence() {
         if (!originDir.exists() || !originDir.isDirectory()) {
             originDir.mkdir();
         }
@@ -307,9 +300,6 @@ public class LNDF extends Application {
         if (!prepDir.exists() || !prepDir.isDirectory()) {
             prepDir.mkdir();
         }
-//        if (!prepHistoryDir.exists() || !prepHistoryDir.isDirectory()) {
-//            prepHistoryDir.mkdir();
-//        }
         if (!siftDir.exists() || !siftDir.isDirectory()) {
             siftDir.mkdir();
         }
@@ -321,6 +311,9 @@ public class LNDF extends Application {
         }
     }
 
+    /**
+     * The timer periodically checks for new captured images and loads the results.
+     */
     private AnimationTimer buildTimer() {
         return new AnimationTimer() {
             @Override
@@ -342,59 +335,33 @@ public class LNDF extends Application {
                         siftWaImage.setVisible(false);
                         saveCapturedImageWithID();
                     }
-//                    if (prepAndSiftReadyToLoad) {
-//                        if (cutOutRegion.getWidth() > 0 && cutOutRegion.getHeight() > 0) {
-//
-//                            boolean success = loadPrepImagesFromCurrentROI();
-//                            if (!success) {
-//                                System.out.println("currentPrepImages not available yet, will try again in a few seconds.");
-//                                prepImage.setVisible(false);
-//                                prepWaImage.setVisible(false);
-//                            } else {
-//                                prepImage.setVisible(true);
-//                                prepWaImage.setVisible(true);
-////                            System.out.println("loading currentPrepImages");
-//                            }
-//
-//                            try {
-//                                success = loadSiftImagesFromCurrentROI();
-//                                if (!success) {
-//                                    System.out.println("currentSiftImages not available yet, will try again in a few seconds.");
-//                                    siftImage.setVisible(false);
-//                                    siftWaImage.setVisible(false);
-//                                } else {
-////                                System.out.println("loading currentSiftImages");
-//                                    siftImage.setVisible(true);
-//                                    siftWaImage.setVisible(true);
-//                                }
-//
-//                            } catch (Exception e) {
-//                                System.out.println("An error occured. Details: " + e);
-//                            }
-//                        }
-//                    }
                     lastTimerCall = now;
                 }
             }
         };
     }
 
-    private void initializeHandlers() {
+    /**
+     * There are handlers for all buttons, and one filter for directory listening, which are initialized in this method.
+     * mousePressedHandler: used while selecting ROI area in captured image.
+     * mouseDraggedHandler: same as before, now draws chosen rectangle.
+     * mouseReleasedHandler: same as before, loads extracted ROI if selected area is in bounds.
+     * saveRoiHandler: when selected ROI is displayed, now the file can be saved.
+     * prepHandler: The preprocessed file(MATLAB) is loaded into the interface.
+     * siftHandler: The SIFT extracted file(MATLAB) is loaded into the interface.
+     * agreeHandler: If the subject agrees to the data usage terms, the ID is saved in the text file of agreed IDs.
+     * subjectCountHandler: Incrementing and Decrementing ID counter is controlled.
+     * fileNameFilter: Used for filtering non-image files, while checking directory contents.
+     */
+    private void initializeHandlersAndFilters() {
         mousePressedHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
-                //            System.out.println("CLICK!");
                 timer.stop();
-                prepAndSiftReadyToLoad = false;
                 atLeastOnceDragged = false;
 
                 cutOutStartX = mouseEvent.getX() - capturedImage.getX();
                 cutOutStartY = mouseEvent.getY() - capturedImage.getY();
-
-                double ratio = capturedImageSrc.getWidth() / capturedImage.getFitWidth();
-
-                //            System.out.println("\t(" + cutOutStartX + "," + cutOutStartY + ")");
-                //            System.out.println("\t==> in source: (" + cutOutStartX * ratio + "," + cutOutStartY * ratio + ")");
             }
         };
         mouseDraggedHandler = new EventHandler<MouseEvent>() {
@@ -450,51 +417,21 @@ public class LNDF extends Application {
             }
         };
 
-        sceneSizeChangedListener = new ChangeListener<Number>() {
-            @Override
-            public void changed(ObservableValue<? extends Number> observableValue, Number oldSceneWidth, Number newSceneWidth) {
-//                capturedImage.setFitWidth(newSceneWidth.doubleValue() / 2);
-//                cutOutRegion.setX(cutOutRegion.getX() * (newSceneWidth.doubleValue() / oldSceneWidth.doubleValue()));
-//                cutOutRegion.setY(cutOutRegion.getWidth() * (newSceneWidth.doubleValue() / oldSceneWidth.doubleValue()));
-//                cutOutRegion.setWidth(cutOutRegion.getWidth() * (newSceneWidth.doubleValue() / oldSceneWidth.doubleValue()));
-//                cutOutRegion.setHeight(cutOutRegion.getWidth());
-//                cutOutRegion.setVisible(false);
-            }
-        };
-        reloadHandler = new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent mouseEvent) {
-//                System.out.println("RELOAD!");
-                cutOutRegion.setVisible(false);
-                roiImage.setVisible(false);
-                saveRoiBtn.setVisible(false);
-                prepImage.setVisible(false);
-                prepWaImage.setVisible(false);
-                Image newOne = getMostRecentOrigin();
-                if (newOne != null) {
-                    capturedImageSrc = newOne;
-                    capturedImage.setImage(capturedImageSrc);
-                }
-            }
-        };
         saveRoiHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
-//                System.out.println("Save ROI!");
                 try {
                     saveRoi();
                     saveRoiBtn.setStyle(Styles.greenButtonStyle());
                 } catch (Exception e) {
                     System.out.println("An error occured. Details: " + e);
                 }
-                prepAndSiftReadyToLoad = true;
             }
         };
 
         prepHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
-//                System.out.println("PREP!");
                 boolean success = false;
 
                 try {
@@ -522,7 +459,6 @@ public class LNDF extends Application {
         siftHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
-//                System.out.println("SIFT!");
                 boolean success = false;
 
                 try {
@@ -562,7 +498,7 @@ public class LNDF extends Application {
             }
         };
 
-        subjectHandler = new EventHandler<MouseEvent>() {
+        subjectCountHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
                 if (((Button) mouseEvent.getSource()).getText().equals("+")) {
@@ -585,6 +521,14 @@ public class LNDF extends Application {
         };
     }
 
+    /**
+     * This helper method checks, if the selected squared area in the captured image is within the bounds of the image.
+     * The result of this check determines the color of the rectangle shown in the image. The color is later checked
+     * in the processing routine.
+     *
+     * @param cutOutRegionWidth The width of the selected squared area
+     * @param cutOutRegionHeight The height of the selected squared area
+     */
     private void checkBounds(double cutOutRegionWidth, double cutOutRegionHeight) {
         if (cutOutStartX + cutOutRegionWidth > capturedImageWidth ||
                 cutOutStartY + cutOutRegionHeight > capturedImageHeight) {
@@ -594,13 +538,16 @@ public class LNDF extends Application {
         }
     }
 
+    /**
+     * When clicking on the specified button, the current preprocessed image (identified by the name of the current
+     * captured image's name) is loaded.
+     */
     private boolean loadPrepImagesFromCurrentROI() {
         String fileString = PREP_DIR_NAME + currRoiName + "_prep.jpg";
         String fileStringWa = PREP_DIR_NAME + currRoiName + "_prep_wa.jpg";
-//        System.out.println(fileString);
-//        System.out.println(fileStringWa);
         File prepFile = new File(fileString);
         File prepWaFile = new File(fileStringWa);
+
         if (!prepFile.exists() || !prepWaFile.exists()) {
             return false;
         } else {
@@ -611,18 +558,20 @@ public class LNDF extends Application {
             prepWaImage.setImage(prepWaImageSrc);
             prepWaImage.setVisible(true);
 
-//            siftImage.setVisible(false);
-//            siftWaImage.setVisible(false);
             return true;
         }
     }
 
+    /**
+     * When clicking on the specified button, the current SIFT extracted image (identified by the name of the current
+     * captured image's name) is loaded.
+     */
     private boolean loadSiftImagesFromCurrentROI() {
         String fileString = SIFT_DIR_NAME + currRoiName + "_xtr_sift.jpg";
         String fileStringWa = SIFT_DIR_NAME + currRoiName + "_xtr_sift_wa.jpg";
-//        System.out.println("SIFT: " + fileString);
         File siftFile = new File(fileString);
         File siftWaFile = new File(fileStringWa);
+
         if (!siftFile.exists() || !siftWaFile.exists()) {
             return false;
         } else {
@@ -637,6 +586,13 @@ public class LNDF extends Application {
         }
     }
 
+    /**
+     * This method loads the previously saved ROI image into the interface.
+     * @param x Start-x of the chosen ROI area
+     * @param y Start-y of the chosen ROI area
+     * @param width Width of the chosen ROI area
+     * @param height Height of the chosen ROI area
+     */
     private void showROI(int x, int y, int width, int height) throws IOException {
         roiImageBuffered = ImageIO.read(new File(ORIGIN_DIR_NAME + currOriginName)).getSubimage(x, y, width, height);
         roiImageSrc = SwingFXUtils.toFXImage(roiImageBuffered, null);
@@ -645,11 +601,19 @@ public class LNDF extends Application {
         saveRoiBtn.setVisible(true);
     }
 
+    /**
+     * The previously chosen squared region in the captured image gets saved, if the ROI bounds are within the image
+     * (checked in button listener).
+     */
     private void saveRoi() throws IOException {
         File roiFile = new File(ROI_DIR_NAME + currRoiName);
         ImageIO.write(roiImageBuffered, "jpg", roiFile);
     }
 
+    /**
+     * This method is periodically called by the timer object. It checks, if there is a new image in the directory, by
+     * comparing the current name of the captured image with the newest file in the directory.
+     */
     private Image getMostRecentOrigin() {
         File mostRecentOrigin = null;
 
@@ -659,7 +623,6 @@ public class LNDF extends Application {
             }
         }
 
-//        System.out.println("mostRecentOrigin " + mostRecentOrigin.getName() + " vs " + currOriginName);
         if (mostRecentOrigin != null && !mostRecentOrigin.getName().equals(currOriginName)) {
             currOriginName = mostRecentOrigin.getName();
             currRoiName = currOriginName.replace(".", "_ROI.");
@@ -667,18 +630,23 @@ public class LNDF extends Application {
             agreeBtn.setEffect(null);
             return new Image("file:" + ORIGIN_DIR_NAME + currOriginName);
         } else {
-//            agreeBtn.setEffect(new DropShadow(20, Color.GREEN));
             return null;
         }
     }
 
+    /**
+     * This method is called every time a new captured image arrives. It's important to know that the subject ID chosen
+     * in the interface determines the name of this stored image. For example, if the current subject ID displayed in
+     * the interface is '3', and a new image arrives, e.g. 'IMG_0000.JPG' and 'IMG_0000.CR2' respectively, the new image
+     * is loaded and the resulting file name generated is 'IMG_0000_ID3.JPG' and 'IMG_0000_ID3.CR2'.
+     */
     private void saveCapturedImageWithID() {
 
         File originFile = new File(ORIGIN_DIR_NAME + "\\" + currOriginName);
         File originFileRaw = new File(ORIGIN_DIR_NAME + "\\" + currOriginName.replace(".JPG", ".CR2"));
-//        System.out.println("AFTER: " + currOriginName);
         File fileWithID = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_ID" + subject_count + ".JPG"));
         File fileWithIDRaw = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_ID" + subject_count + ".CR2"));
+
         try {
             Files.copy(originFile.toPath(), fileWithID.toPath());
             System.out.println("Saved ID file.");
@@ -686,20 +654,25 @@ public class LNDF extends Application {
             System.out.println("ID file already exists.");
         } catch (Exception e) {
             System.out.println("Could not save ID file.");
-//            e.printStackTrace();
         }
 
         try {
+            while (!originFileRaw.exists()) {
+                Thread.sleep(1000);
+            }
             Files.copy(originFileRaw.toPath(), fileWithIDRaw.toPath());
             System.out.println("Saved ID raw file.");
         } catch (FileAlreadyExistsException e) {
             System.out.println("ID raw file already exists.");
         } catch (Exception e) {
             System.out.println("Could not save ID raw file.");
-//            e.printStackTrace();
+            e.printStackTrace();
         }
     }
 
+    /**
+     * All UI elements previously defined are loaded into the interface.
+     */
     private void addElementsToRoot(Group root) {
         root.getChildren().add(header);
         root.getChildren().add(capturedImage);
@@ -710,7 +683,6 @@ public class LNDF extends Application {
         root.getChildren().add(siftImage);
         root.getChildren().add(siftWaImage);
         root.getChildren().add(cutOutRegion);
-//        root.getChildren().add(reloadBtn);
         root.getChildren().add(saveRoiBtn);
         root.getChildren().add(prepBtn);
         root.getChildren().add(siftBtn);
@@ -720,6 +692,9 @@ public class LNDF extends Application {
         root.getChildren().add(subjectCountLabel);
     }
 
+    /**
+     * All properties of the captured image displayed are properly set.
+     */
     private void initializeCapturedImage() {
         capturedImageSrc = getMostRecentOrigin();
         saveCapturedImageWithID();
@@ -733,6 +708,9 @@ public class LNDF extends Application {
         capturedImage.setOnMouseReleased(mouseReleasedHandler);
     }
 
+    /**
+     * A nice header is loaded, with some fancy logos.
+     */
     private void loadHeaderImages() {
         header = new ImageView(new Image("file:icons/header_low.png"));
         header.setPreserveRatio(true);
@@ -744,12 +722,12 @@ public class LNDF extends Application {
         lndf.setX(0);
     }
 
+    /**
+     * Based on the layout of the captured image (view), all other elements are oriented according to it, by specifying
+     * all related properties.
+     */
     private void setLayoutProperties() {
         capturedImage.setFitWidth(displayBounds.getWidth() / 2.7);
-
-//        reloadBtn.setLayoutX(capturedImage.getX() + capturedImage.getFitWidth() - reloadBtn.getWidth() - 10);
-//        reloadBtn.setLayoutY(capturedImage.getY() + 10);
-
         capturedImageWidth = capturedImage.getBoundsInLocal().getWidth();
         capturedImageHeight = capturedImage.getBoundsInLocal().getHeight();
 
@@ -797,7 +775,7 @@ public class LNDF extends Application {
         siftBtn.setLayoutY(prepBtn.getLayoutY() + 50);
         siftBtn.setVisible(false);
 
-        subjectCountLabel.setLayoutX(capturedImage.getX() + 2* CAPTURED_IMAGE_OFFSET);
+        subjectCountLabel.setLayoutX(capturedImage.getX() + 2 * CAPTURED_IMAGE_OFFSET);
         subjectCountLabel.setLayoutY(displayBounds.getHeight() - subjectCountLabel.getHeight() - 20);
 
         incrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() + subjectCountLabel.getWidth() + 30);

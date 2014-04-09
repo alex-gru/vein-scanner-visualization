@@ -1,4 +1,4 @@
-package demo;
+package javafx_playground;
 
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
@@ -6,9 +6,7 @@ import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.scene.Scene;
-import javafx.scene.control.Label;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.StackPane;
 import javafx.scene.shape.Rectangle;
 import javafx.stage.Stage;
 import javafx.util.Duration;

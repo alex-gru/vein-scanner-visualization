@@ -1,7 +1,12 @@
-package lndf;
+package veinscanner.ui;
 
 /**
- * Created by alexgru-mobile on 03.04.14.
+ * Not really the fancy way, but this class provides styles used in the visualization. CSS not really working, so this
+ * is a small workaround.
+ *
+ *
+ * @author Alex Gru (Department of Computer Sciences, University of Salzburg)
+ * @version 1.0
  */
 public class Styles {
     public static String buttonStyle() {

@@ -1,4 +1,4 @@
-package demo;
+package javafx_playground;
 
 import javafx.application.Application;
 import javafx.scene.Scene;

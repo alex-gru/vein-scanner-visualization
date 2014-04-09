@@ -1,4 +1,4 @@
-package demo;
+package javafx_playground;
 
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;

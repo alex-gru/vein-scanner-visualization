@@ -1,2 +1,5 @@
-This is a visualization tool for the research demo day in Salzburg aka "Lange Nacht der Forschung".
+This is a visualization for the research demo day in Salzburg aka "Lange Nacht der Forschung". The
+hand vein scanner captures subject's hands and the result and some processing steps are shown in this
+interface.
+It is further used for research purposes.
 (c) 2014 Department of Computer Sciences, University of Salzburg, Salzburg, Austria.
