@@ -38,7 +38,6 @@ import java.nio.file.Files;
  * extraction routine, one can load the results into this visualization. Furthermore, one can control the subject ID
  * counter, which determines the storing routine with subject IDs in subfolder ORIGIN_WITH_ID_DIR_NAME.
  *
- *
  * @author Alex Gru (Department of Computer Sciences, University of Salzburg)
  * @version 1.0
  */
@@ -67,8 +66,6 @@ public class Visualization extends Application {
     private static final double CUTOUT_LINEWIDTH = 5;
     private static final Color SHAPE_COLOR = Color.YELLOW;
     private static final Color SHAPE_COLOR_ERROR = Color.RED;
-    private static final double CAPTURED_IMAGE_OFFSET = 50;
-    private static final double BUTTON_SIZE = 20;
     private static final int SCREEN_INDEX = 1; //0: laptop, 1: external
     private static FileWriter agreedListFileWriter; //0: laptop, 1: external
     private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
@@ -76,9 +73,15 @@ public class Visualization extends Application {
     private int subject_count = 0;
     private Rectangle2D displayBounds;
 
+    private static final double BUTTON_SIZE_WIDTH = 150;
+    private static final double BUTTON_SIZE_HEIGHT = 30;
+    private static final double OFFSET_MEDIUM = 30;
+    private static final double OFFSET_BIG = 50;
+    private static final double OFFSET_HUGE = 100;
+    private static final double BUTTON_SIZE = 20;
     /* ------------------------------------------------
-    DISPLAYED IMAGES
-     */
+        DISPLAYED IMAGES
+         */
     private ImageView lndf;
     private ImageView header;
 
@@ -112,9 +115,10 @@ public class Visualization extends Application {
     private Button saveRoiBtn;
     private Button prepBtn;
     private Button siftBtn;
-    private Button agreeBtn;
     private Button incrementSubjectBtn;
     private Button decrementSubjectBtn;
+    private Button auflichtBtn;
+    private Button durchlichtBtn;
     private Label subjectCountLabel;
 
     /* ------------------------------------------------
@@ -137,6 +141,9 @@ public class Visualization extends Application {
     private EventHandler<MouseEvent> siftHandler;
     private EventHandler<MouseEvent> agreeHandler;
     private EventHandler<MouseEvent> subjectCountHandler;
+    private EventHandler<MouseEvent> auflichtBtnHandler;
+    private EventHandler<MouseEvent> durchlichtBtnHandler;
+
     private FilenameFilter fileNameFilter;
 
     /* ------------------------------------------------
@@ -201,9 +208,6 @@ public class Visualization extends Application {
         agreeIcon.setFitWidth(BUTTON_SIZE);
         agreeIcon.setFitHeight(agreeIcon.getFitWidth());
 
-        agreeBtn = new Button("Agree");
-        agreeBtn.setOnMousePressed(agreeHandler);
-
         subjectCountLabel = new Label("#" + subject_count);
         subjectCountLabel.setTextAlignment(TextAlignment.CENTER);
         subjectCountLabel.setFont(new Font("Arial", 30));
@@ -212,11 +216,16 @@ public class Visualization extends Application {
         decrementSubjectBtn = new Button("-");
         decrementSubjectBtn.setOnMousePressed(subjectCountHandler);
 
+        auflichtBtn = new Button("Auflicht");
+        auflichtBtn.setOnMousePressed(auflichtBtnHandler);
+        durchlichtBtn = new Button("Durchlicht");
+        durchlichtBtn.setOnMousePressed(durchlichtBtnHandler);
+
         saveRoiBtn.setStyle(Styles.buttonStyle());
         prepBtn.setStyle(Styles.buttonStyle());
         siftBtn.setStyle(Styles.buttonStyle());
-        agreeBtn.setStyle(Styles.buttonStyle());
-
+        auflichtBtn.setStyle(Styles.buttonStyle());
+        durchlichtBtn.setStyle(Styles.buttonStyle());
         incrementSubjectBtn.setStyle(Styles.buttonStyle());
         decrementSubjectBtn.setStyle(Styles.buttonStyle());
         decrementSubjectBtn.setStyle(Styles.buttonStyle());
@@ -283,6 +292,7 @@ public class Visualization extends Application {
     /* ------------------------------------------------
     SPECIALIZED METHODS
      */
+
     /**
      * Captured images, ROI images, PREP images and SIFT images are stored in specified directories. In this routine,
      * the existence of those directories is checked.
@@ -494,7 +504,6 @@ public class Visualization extends Application {
                     System.out.println("An error occured while trying to save current subjects id in file. Details: ");
                     e.printStackTrace();
                 }
-                agreeBtn.setStyle(Styles.greenButtonStyle());
             }
         };
 
@@ -503,17 +512,34 @@ public class Visualization extends Application {
             public void handle(MouseEvent mouseEvent) {
                 if (((Button) mouseEvent.getSource()).getText().equals("+")) {
                     subject_count++;
-                    agreeBtn.setStyle(Styles.buttonStyle());
                 } else {
                     if (subject_count > 0) {
                         subject_count--;
-                        agreeBtn.setStyle(Styles.buttonStyle());
                     }
                 }
                 subjectCountLabel.setText("#" + subject_count);
                 System.out.println("Current: #" + subject_count);
             }
         };
+
+        auflichtBtnHandler = new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent mouseEvent) {
+                durchlichtBtn.setDisable(false);
+                durchlichtBtn.setStyle(Styles.buttonStyle());
+                auflichtBtn.setStyle(Styles.greenButtonStyle());
+            }
+        };
+
+        durchlichtBtnHandler = new EventHandler<MouseEvent>() {
+            @Override
+            public void handle(MouseEvent mouseEvent) {
+                auflichtBtn.setDisable(false);
+                auflichtBtn.setStyle(Styles.buttonStyle());
+                durchlichtBtn.setStyle(Styles.greenButtonStyle());
+            }
+        };
+
         fileNameFilter = new FilenameFilter() {
             public boolean accept(File dir, String name) {
                 return name.toLowerCase().endsWith(".jpg");
@@ -526,7 +552,7 @@ public class Visualization extends Application {
      * The result of this check determines the color of the rectangle shown in the image. The color is later checked
      * in the processing routine.
      *
-     * @param cutOutRegionWidth The width of the selected squared area
+     * @param cutOutRegionWidth  The width of the selected squared area
      * @param cutOutRegionHeight The height of the selected squared area
      */
     private void checkBounds(double cutOutRegionWidth, double cutOutRegionHeight) {
@@ -588,9 +614,10 @@ public class Visualization extends Application {
 
     /**
      * This method loads the previously saved ROI image into the interface.
-     * @param x Start-x of the chosen ROI area
-     * @param y Start-y of the chosen ROI area
-     * @param width Width of the chosen ROI area
+     *
+     * @param x      Start-x of the chosen ROI area
+     * @param y      Start-y of the chosen ROI area
+     * @param width  Width of the chosen ROI area
      * @param height Height of the chosen ROI area
      */
     private void showROI(int x, int y, int width, int height) throws IOException {
@@ -627,7 +654,6 @@ public class Visualization extends Application {
             currOriginName = mostRecentOrigin.getName();
             currRoiName = currOriginName.replace(".", "_ROI.");
             cutOutRegion.setVisible(false);
-            agreeBtn.setEffect(null);
             return new Image("file:" + ORIGIN_DIR_NAME + currOriginName);
         } else {
             return null;
@@ -686,9 +712,10 @@ public class Visualization extends Application {
         root.getChildren().add(saveRoiBtn);
         root.getChildren().add(prepBtn);
         root.getChildren().add(siftBtn);
-        root.getChildren().add(agreeBtn);
         root.getChildren().add(incrementSubjectBtn);
         root.getChildren().add(decrementSubjectBtn);
+        root.getChildren().add(auflichtBtn);
+        root.getChildren().add(durchlichtBtn);
         root.getChildren().add(subjectCountLabel);
     }
 
@@ -697,10 +724,12 @@ public class Visualization extends Application {
      */
     private void initializeCapturedImage() {
         capturedImageSrc = getMostRecentOrigin();
-        saveCapturedImageWithID();
-        capturedImage.setImage(capturedImageSrc);
+        if (currOriginName != null) {
+            saveCapturedImageWithID();
+            capturedImage.setImage(capturedImageSrc);
+        }
         capturedImage.setPreserveRatio(true);
-        capturedImage.setX(CAPTURED_IMAGE_OFFSET);
+        capturedImage.setX(OFFSET_BIG);
         capturedImage.setY(header.getY() + header.getLayoutBounds().getHeight() + capturedImage.getX());
 
         capturedImage.setOnMousePressed(mousePressedHandler);
@@ -735,19 +764,19 @@ public class Visualization extends Application {
         roiImage.setFitHeight(roiImage.getFitWidth());
         roiImage.setEffect(new DropShadow(20, SHAPE_COLOR));
         roiImage.setX(capturedImage.getX() + capturedImageWidth - roiImage.getLayoutBounds().getWidth());
-        roiImage.setY(displayBounds.getHeight() - roiImage.getLayoutBounds().getHeight() - CAPTURED_IMAGE_OFFSET);
+        roiImage.setY(displayBounds.getHeight() - roiImage.getLayoutBounds().getHeight() - OFFSET_BIG);
 
         prepWaImage.setFitWidth(displayBounds.getWidth() / 4);
         prepWaImage.setFitHeight(prepWaImage.getFitWidth());
         prepWaImage.setEffect(new DropShadow(20, SHAPE_COLOR));
-        prepWaImage.setX(displayBounds.getWidth() - prepWaImage.getLayoutBounds().getWidth() - CAPTURED_IMAGE_OFFSET);
+        prepWaImage.setX(displayBounds.getWidth() - prepWaImage.getLayoutBounds().getWidth() - OFFSET_BIG);
         prepWaImage.setY(capturedImage.getY());
         prepWaImage.setVisible(false);
 
         prepImage.setFitWidth(displayBounds.getWidth() / 4);
         prepImage.setFitHeight(prepImage.getFitWidth());
         prepImage.setEffect(new DropShadow(20, SHAPE_COLOR));
-        prepImage.setX(prepWaImage.getX() - prepImage.getLayoutBounds().getWidth() - CAPTURED_IMAGE_OFFSET / 2);
+        prepImage.setX(prepWaImage.getX() - prepImage.getLayoutBounds().getWidth() - OFFSET_BIG / 2);
         prepImage.setY(capturedImage.getY());
         prepImage.setVisible(false);
 
@@ -755,7 +784,7 @@ public class Visualization extends Application {
         siftImage.setFitHeight(prepImage.getLayoutBounds().getHeight() * 0.75);
         siftImage.setEffect(new DropShadow(20, SHAPE_COLOR));
         siftImage.setX(prepImage.getX());
-        siftImage.setY(prepImage.getY() + prepImage.getLayoutBounds().getHeight() + CAPTURED_IMAGE_OFFSET);
+        siftImage.setY(prepImage.getY() + prepImage.getLayoutBounds().getHeight() + OFFSET_BIG);
 
         siftWaImage.setFitWidth(prepWaImage.getLayoutBounds().getWidth());
         siftWaImage.setFitHeight(prepWaImage.getLayoutBounds().getHeight() * 0.75);
@@ -763,31 +792,42 @@ public class Visualization extends Application {
         siftWaImage.setX(prepWaImage.getX());
         siftWaImage.setY(siftImage.getY());
 
-        saveRoiBtn.setLayoutX(CAPTURED_IMAGE_OFFSET);
+        saveRoiBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
+        prepBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
+        siftBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
+        auflichtBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
+        durchlichtBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
+
+        saveRoiBtn.setLayoutX(OFFSET_BIG);
         saveRoiBtn.setLayoutY(roiImage.getY());
         saveRoiBtn.setVisible(false);
 
         prepBtn.setLayoutX(saveRoiBtn.getLayoutX());
-        prepBtn.setLayoutY(saveRoiBtn.getLayoutY() + 50);
+        prepBtn.setLayoutY(saveRoiBtn.getLayoutY() + OFFSET_BIG);
         prepBtn.setVisible(false);
 
         siftBtn.setLayoutX(prepBtn.getLayoutX());
-        siftBtn.setLayoutY(prepBtn.getLayoutY() + 50);
+        siftBtn.setLayoutY(prepBtn.getLayoutY() + OFFSET_BIG);
         siftBtn.setVisible(false);
 
-        subjectCountLabel.setLayoutX(capturedImage.getX() + 2 * CAPTURED_IMAGE_OFFSET);
-        subjectCountLabel.setLayoutY(displayBounds.getHeight() - subjectCountLabel.getHeight() - 20);
+        subjectCountLabel.setLayoutX(capturedImage.getX() + capturedImageWidth - OFFSET_BIG);
+        subjectCountLabel.setLayoutY(capturedImage.getY() - OFFSET_HUGE);
 
-        incrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() + subjectCountLabel.getWidth() + 30);
-        incrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY());
+        incrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX());
+        incrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY() - incrementSubjectBtn.getPrefHeight() - OFFSET_MEDIUM);
         incrementSubjectBtn.setVisible(true);
 
-        decrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX() - decrementSubjectBtn.getWidth() - 30);
-        decrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY());
+        decrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX());
+        decrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY() + decrementSubjectBtn.getPrefHeight() + OFFSET_MEDIUM);
         decrementSubjectBtn.setVisible(true);
 
-        agreeBtn.setLayoutX(decrementSubjectBtn.getLayoutX());
-        agreeBtn.setLayoutY(decrementSubjectBtn.getLayoutY() - decrementSubjectBtn.getHeight() - 10);
-        agreeBtn.setVisible(true);
+        auflichtBtn.setLayoutX(incrementSubjectBtn.getLayoutX() - auflichtBtn.getPrefWidth() - OFFSET_MEDIUM);
+        auflichtBtn.setLayoutY(incrementSubjectBtn.getLayoutY());
+        auflichtBtn.setVisible(true);
+
+        durchlichtBtn.setLayoutX(auflichtBtn.getLayoutX());
+        durchlichtBtn.setLayoutY(decrementSubjectBtn.getLayoutY());
+        durchlichtBtn.setVisible(true);
+
     }
 }
