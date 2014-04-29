@@ -22,7 +22,7 @@ public class Styles {
     }
     public static String greenButtonStyle() {
         return "-fx-background-color: \n" +
-                "        rgba(0,255,0,1);\n" +
+                "        rgba(47, 165, 104, 1);\n" +
                 "    -fx-background-insets: 0 0 -1 0,0,1;\n" +
                 "    -fx-background-radius: 5,5,4;\n" +
                 "    -fx-padding: 3 30 3 30;\n" +

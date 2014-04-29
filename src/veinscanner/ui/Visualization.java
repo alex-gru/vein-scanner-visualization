@@ -12,6 +12,7 @@ import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -67,17 +68,18 @@ public class Visualization extends Application {
     private static final Color SHAPE_COLOR = Color.YELLOW;
     private static final Color SHAPE_COLOR_ERROR = Color.RED;
     private static final int SCREEN_INDEX = 1; //0: laptop, 1: external
-    private static FileWriter agreedListFileWriter; //0: laptop, 1: external
     private static final String MATLAB_PROCESSING_DIR = "E:\\Dropbox\\PR\\LNDF\\Matlab_Processing\\";
     private boolean atLeastOnceDragged = false;
+    private boolean auflicht = true; // true: auflicht, false: durchlicht
     private int subject_count = 0;
     private Rectangle2D displayBounds;
 
     private static final double BUTTON_SIZE_WIDTH = 150;
     private static final double BUTTON_SIZE_HEIGHT = 30;
+    private static final double OFFSET_SMALL = 10;
     private static final double OFFSET_MEDIUM = 30;
     private static final double OFFSET_BIG = 50;
-    private static final double OFFSET_HUGE = 100;
+    private static final double OFFSET_HUGE = 80;
     private static final double BUTTON_SIZE = 20;
     /* ------------------------------------------------
         DISPLAYED IMAGES
@@ -115,8 +117,6 @@ public class Visualization extends Application {
     private Button saveRoiBtn;
     private Button prepBtn;
     private Button siftBtn;
-    private Button incrementSubjectBtn;
-    private Button decrementSubjectBtn;
     private Button auflichtBtn;
     private Button durchlichtBtn;
     private Label subjectCountLabel;
@@ -139,7 +139,6 @@ public class Visualization extends Application {
     private EventHandler<MouseEvent> saveRoiHandler;
     private EventHandler<MouseEvent> prepHandler;
     private EventHandler<MouseEvent> siftHandler;
-    private EventHandler<MouseEvent> agreeHandler;
     private EventHandler<MouseEvent> subjectCountHandler;
     private EventHandler<MouseEvent> auflichtBtnHandler;
     private EventHandler<MouseEvent> durchlichtBtnHandler;
@@ -170,16 +169,6 @@ public class Visualization extends Application {
      */
     @Override
     public void init() {
-        try {
-            File agreedListFile = new File(ORIGIN_WITH_ID_DIR_NAME + "agreed_list.txt");
-            if (!agreedListFile.exists() || agreedListFile.isDirectory()) {
-                agreedListFile.createNewFile();
-            }
-            agreedListFileWriter = new FileWriter(agreedListFile, true);
-        } catch (IOException e) {
-            System.out.println("An error occured while trying to initialize agreed FileWriter. Details: ");
-            e.printStackTrace();
-        }
         cutOutRegion = RectangleBuilder.create().build();
         cutOutRegion.setStroke(SHAPE_COLOR);
         cutOutRegion.setStrokeWidth(CUTOUT_LINEWIDTH);
@@ -204,17 +193,10 @@ public class Visualization extends Application {
         siftBtn = new Button("SIFT");
         siftBtn.setOnMousePressed(siftHandler);
 
-        ImageView agreeIcon = new ImageView(new Image("file:icons/agree-icon.png"));
-        agreeIcon.setFitWidth(BUTTON_SIZE);
-        agreeIcon.setFitHeight(agreeIcon.getFitWidth());
-
-        subjectCountLabel = new Label("#" + subject_count);
+        subjectCountLabel = new Label(String.format("%03d", subject_count));
         subjectCountLabel.setTextAlignment(TextAlignment.CENTER);
         subjectCountLabel.setFont(new Font("Arial", 30));
-        incrementSubjectBtn = new Button("+");
-        incrementSubjectBtn.setOnMousePressed(subjectCountHandler);
-        decrementSubjectBtn = new Button("-");
-        decrementSubjectBtn.setOnMousePressed(subjectCountHandler);
+        subjectCountLabel.setOnMousePressed(subjectCountHandler);
 
         auflichtBtn = new Button("Auflicht");
         auflichtBtn.setOnMousePressed(auflichtBtnHandler);
@@ -224,11 +206,8 @@ public class Visualization extends Application {
         saveRoiBtn.setStyle(Styles.buttonStyle());
         prepBtn.setStyle(Styles.buttonStyle());
         siftBtn.setStyle(Styles.buttonStyle());
-        auflichtBtn.setStyle(Styles.buttonStyle());
+        auflichtBtn.setStyle(Styles.greenButtonStyle());
         durchlichtBtn.setStyle(Styles.buttonStyle());
-        incrementSubjectBtn.setStyle(Styles.buttonStyle());
-        decrementSubjectBtn.setStyle(Styles.buttonStyle());
-        decrementSubjectBtn.setStyle(Styles.buttonStyle());
     }
 
     /**
@@ -274,12 +253,7 @@ public class Visualization extends Application {
      */
     @Override
     public void stop() {
-        try {
-            agreedListFileWriter.close();
-            timer.stop();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        timer.stop();
     }
 
     /**
@@ -359,7 +333,6 @@ public class Visualization extends Application {
      * saveRoiHandler: when selected ROI is displayed, now the file can be saved.
      * prepHandler: The preprocessed file(MATLAB) is loaded into the interface.
      * siftHandler: The SIFT extracted file(MATLAB) is loaded into the interface.
-     * agreeHandler: If the subject agrees to the data usage terms, the ID is saved in the text file of agreed IDs.
      * subjectCountHandler: Incrementing and Decrementing ID counter is controlled.
      * fileNameFilter: Used for filtering non-image files, while checking directory contents.
      */
@@ -494,30 +467,18 @@ public class Visualization extends Application {
             }
         };
 
-        agreeHandler = new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent mouseEvent) {
-                try {
-                    agreedListFileWriter.append("\n#" + subject_count);
-                    agreedListFileWriter.flush();
-                } catch (IOException e) {
-                    System.out.println("An error occured while trying to save current subjects id in file. Details: ");
-                    e.printStackTrace();
-                }
-            }
-        };
-
         subjectCountHandler = new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent mouseEvent) {
-                if (((Button) mouseEvent.getSource()).getText().equals("+")) {
+
+                if (mouseEvent.isPrimaryButtonDown()) {
                     subject_count++;
-                } else {
+                } else if (mouseEvent.isSecondaryButtonDown()) {
                     if (subject_count > 0) {
                         subject_count--;
                     }
                 }
-                subjectCountLabel.setText("#" + subject_count);
+                subjectCountLabel.setText(String.format("%03d", subject_count));
                 System.out.println("Current: #" + subject_count);
             }
         };
@@ -526,6 +487,7 @@ public class Visualization extends Application {
             @Override
             public void handle(MouseEvent mouseEvent) {
                 durchlichtBtn.setDisable(false);
+                auflicht = true;
                 durchlichtBtn.setStyle(Styles.buttonStyle());
                 auflichtBtn.setStyle(Styles.greenButtonStyle());
             }
@@ -535,6 +497,7 @@ public class Visualization extends Application {
             @Override
             public void handle(MouseEvent mouseEvent) {
                 auflichtBtn.setDisable(false);
+                auflicht = false;
                 auflichtBtn.setStyle(Styles.buttonStyle());
                 durchlichtBtn.setStyle(Styles.greenButtonStyle());
             }
@@ -670,8 +633,17 @@ public class Visualization extends Application {
 
         File originFile = new File(ORIGIN_DIR_NAME + "\\" + currOriginName);
         File originFileRaw = new File(ORIGIN_DIR_NAME + "\\" + currOriginName.replace(".JPG", ".CR2"));
-        File fileWithID = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_ID" + subject_count + ".JPG"));
-        File fileWithIDRaw = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_ID" + subject_count + ".CR2"));
+
+        File fileWithID = null;
+        File fileWithIDRaw = null;
+
+        if (auflicht) {
+            fileWithID = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_AUFLICHT" + "_ID" + subject_count + ".JPG"));
+            fileWithIDRaw = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_AUFLICHT" + "_ID" + subject_count + ".CR2"));
+        } else {
+            fileWithID = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_DURCHLICHT" + "_ID" + subject_count + ".JPG"));
+            fileWithIDRaw = new File(ORIGIN_WITH_ID_DIR_NAME + "\\" + currOriginName.replace(".JPG", "_DURCHLICHT" + "_ID" + subject_count + ".CR2"));
+        }
 
         try {
             Files.copy(originFile.toPath(), fileWithID.toPath());
@@ -712,8 +684,6 @@ public class Visualization extends Application {
         root.getChildren().add(saveRoiBtn);
         root.getChildren().add(prepBtn);
         root.getChildren().add(siftBtn);
-        root.getChildren().add(incrementSubjectBtn);
-        root.getChildren().add(decrementSubjectBtn);
         root.getChildren().add(auflichtBtn);
         root.getChildren().add(durchlichtBtn);
         root.getChildren().add(subjectCountLabel);
@@ -795,6 +765,7 @@ public class Visualization extends Application {
         saveRoiBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
         prepBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
         siftBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
+        subjectCountLabel.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
         auflichtBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
         durchlichtBtn.setPrefSize(BUTTON_SIZE_WIDTH, BUTTON_SIZE_HEIGHT);
 
@@ -810,23 +781,15 @@ public class Visualization extends Application {
         siftBtn.setLayoutY(prepBtn.getLayoutY() + OFFSET_BIG);
         siftBtn.setVisible(false);
 
-        subjectCountLabel.setLayoutX(capturedImage.getX() + capturedImageWidth - OFFSET_BIG);
+        subjectCountLabel.setLayoutX(capturedImage.getX() + capturedImageWidth - BUTTON_SIZE_WIDTH / 2 - subjectCountLabel.getWidth() / 2);
         subjectCountLabel.setLayoutY(capturedImage.getY() - OFFSET_HUGE);
 
-        incrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX());
-        incrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY() - incrementSubjectBtn.getPrefHeight() - OFFSET_MEDIUM);
-        incrementSubjectBtn.setVisible(true);
-
-        decrementSubjectBtn.setLayoutX(subjectCountLabel.getLayoutX());
-        decrementSubjectBtn.setLayoutY(subjectCountLabel.getLayoutY() + decrementSubjectBtn.getPrefHeight() + OFFSET_MEDIUM);
-        decrementSubjectBtn.setVisible(true);
-
-        auflichtBtn.setLayoutX(incrementSubjectBtn.getLayoutX() - auflichtBtn.getPrefWidth() - OFFSET_MEDIUM);
-        auflichtBtn.setLayoutY(incrementSubjectBtn.getLayoutY());
+        auflichtBtn.setLayoutX(capturedImage.getX() + capturedImageWidth - BUTTON_SIZE_WIDTH);
+        auflichtBtn.setLayoutY(subjectCountLabel.getLayoutY() - auflichtBtn.getPrefHeight() - OFFSET_SMALL);
         auflichtBtn.setVisible(true);
 
         durchlichtBtn.setLayoutX(auflichtBtn.getLayoutX());
-        durchlichtBtn.setLayoutY(decrementSubjectBtn.getLayoutY());
+        durchlichtBtn.setLayoutY(subjectCountLabel.getLayoutY() + subjectCountLabel.getPrefHeight() + OFFSET_SMALL);
         durchlichtBtn.setVisible(true);
 
     }
