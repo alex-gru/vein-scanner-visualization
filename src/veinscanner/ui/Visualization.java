@@ -12,7 +12,6 @@ import javafx.scene.control.Label;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -25,7 +24,6 @@ import javafx.stage.Stage;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
@@ -84,7 +82,7 @@ public class Visualization extends Application {
     /* ------------------------------------------------
         DISPLAYED IMAGES
          */
-    private ImageView lndf;
+    private ImageView event_logo;
     private ImageView header;
 
     private double capturedImageWidth;
@@ -674,7 +672,7 @@ public class Visualization extends Application {
     private void addElementsToRoot(Group root) {
         root.getChildren().add(header);
         root.getChildren().add(capturedImage);
-        root.getChildren().add(lndf);
+        root.getChildren().add(event_logo);
         root.getChildren().add(roiImage);
         root.getChildren().add(prepImage);
         root.getChildren().add(prepWaImage);
@@ -700,7 +698,7 @@ public class Visualization extends Application {
         }
         capturedImage.setPreserveRatio(true);
         capturedImage.setX(OFFSET_BIG);
-        capturedImage.setY(header.getY() + header.getLayoutBounds().getHeight() + capturedImage.getX());
+        capturedImage.setY(OFFSET_MEDIUM + header.getY() + header.getLayoutBounds().getHeight() + capturedImage.getX());
 
         capturedImage.setOnMousePressed(mousePressedHandler);
         capturedImage.setOnMouseDragged(mouseDraggedHandler);
@@ -715,10 +713,14 @@ public class Visualization extends Application {
         header.setPreserveRatio(true);
         header.setFitWidth(displayBounds.getWidth() / 2);
         header.setX(displayBounds.getWidth() - header.getLayoutBounds().getWidth() - 10);
-        lndf = new ImageView(new Image("file:icons/lndf.png"));
-        lndf.setPreserveRatio(true);
-        lndf.setFitWidth(displayBounds.getWidth() / 6);
-        lndf.setX(0);
+
+        event_logo = new ImageView(new Image("file:icons/tdot_logo_low.JPG"));
+        event_logo.setX(OFFSET_SMALL);
+        event_logo.setY(OFFSET_SMALL);
+//      LNDF Settings
+//      event_logo = new ImageView(new Image("file:icons/event_logo.png"));
+        event_logo.setPreserveRatio(true);
+        event_logo.setFitWidth(displayBounds.getWidth() / 6);
     }
 
     /**
