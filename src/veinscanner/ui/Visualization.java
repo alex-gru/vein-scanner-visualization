@@ -244,6 +244,7 @@ public class Visualization extends Application {
 
         setLayoutProperties();
         timer.start();
+        System.out.println("inhere!");
     }
 
     /**
@@ -653,8 +654,14 @@ public class Visualization extends Application {
         }
 
         try {
+            int maxAttempts = 10;
+            int count = 0;
             while (!originFileRaw.exists()) {
                 Thread.sleep(1000);
+                count++;
+                if (count == maxAttempts) {
+                    throw new Exception("Time exceeded while waiting for origin raw file.");
+                }
             }
             Files.copy(originFileRaw.toPath(), fileWithIDRaw.toPath());
             System.out.println("Saved ID raw file.");
@@ -693,6 +700,7 @@ public class Visualization extends Application {
     private void initializeCapturedImage() {
         capturedImageSrc = getMostRecentOrigin();
         if (currOriginName != null) {
+//            System.out.println("NOW!");
             saveCapturedImageWithID();
             capturedImage.setImage(capturedImageSrc);
         }
