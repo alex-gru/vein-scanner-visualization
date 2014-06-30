@@ -722,7 +722,8 @@ public class Visualization extends Application {
         header.setFitWidth(displayBounds.getWidth() / 2);
         header.setX(displayBounds.getWidth() - header.getLayoutBounds().getWidth() - 10);
 
-        event_logo = new ImageView(new Image("file:icons/tdot_logo_low.JPG"));
+//        event_logo = new ImageView(new Image("file:icons/tdot_logo_low.JPG"));
+        event_logo = new ImageView(new Image("file:icons/I-Day_Logo.png"));
         event_logo.setX(OFFSET_SMALL);
         event_logo.setY(OFFSET_SMALL);
 //      LNDF Settings
